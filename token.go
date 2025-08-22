@@ -18,18 +18,24 @@ const (
 	Lt
 	Gt
 	Slash
+	String
 )
 
 type Token struct {
 	Type TokenType
+
+	// how it appeared in source code
 	Text []rune
-	Line int
+	// the value itself. best way to think about this is a string without quotes, but .Text will have the quotes
+	Literal []rune
+	Line    int
 }
 
-func NewToken(t TokenType, text []rune, line int) Token {
+func NewToken(t TokenType, text []rune, line int, literal []rune) Token {
 	return Token{
-		Type: t,
-		Text: text,
-		Line: line,
+		Type:    t,
+		Text:    text,
+		Line:    line,
+		Literal: literal,
 	}
 }

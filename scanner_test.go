@@ -217,3 +217,21 @@ func TestTokenAfterWhitespaceHasCorrectLineNum(t *testing.T) {
 
 	assert.Equal(t, 1, s.line)
 }
+
+func TestStringToken(t *testing.T) {
+	s := NewScanner("!\"hey\"")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Bang,
+			Text: []rune("!"),
+			Line: 0,
+		},
+		{
+			Type:    String,
+			Text:    []rune("\"hey\""),
+			Line:    0,
+			Literal: []rune("hey"),
+		},
+	}, s.scanTokens())
+}
