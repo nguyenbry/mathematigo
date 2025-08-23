@@ -246,7 +246,6 @@ func TestIsASCIIDigit(t *testing.T) {
 	rs := []rune("0123456789")
 
 	for _, x := range rs {
-		fmt.Println((x))
 		assert.True(t, isASCIIDigit(x))
 	}
 }
