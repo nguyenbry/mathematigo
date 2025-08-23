@@ -74,6 +74,10 @@ func (s *Scanner) string(opener rune) []rune {
 
 }
 
+func isASCIIDigit(r rune) bool {
+	return 48 <= r && r <= 57
+}
+
 func (s *Scanner) scanToken() {
 	r := s.advance()
 
@@ -87,7 +91,15 @@ func (s *Scanner) scanToken() {
 	case '-':
 		s.addToken(NewToken(Minus, s.source[s.start:s.current], s.line, nil))
 	case '.':
-		s.addToken(NewToken(Dot, s.source[s.start:s.current], s.line, nil))
+		s.advanceTilEndOfNumber(false)
+
+		isDot := s.current == s.start+1 // that is, s.source[s.start:s.current] == []rune(".")
+
+		if isDot {
+			s.addToken(NewToken(Dot, s.source[s.start:s.current], s.line, nil))
+		} else {
+			s.addToken(NewToken(Number, s.source[s.start:s.current], s.line, nil))
+		}
 	case '*':
 		s.addToken(NewToken(Star, s.source[s.start:s.current], s.line, nil))
 	case '/':
@@ -122,9 +134,26 @@ func (s *Scanner) scanToken() {
 	case ' ', '\t', '\r':
 		// do nothing
 	case '\n':
+		s.addToken(NewToken(NewLine, nil, s.line, nil))
 		s.line++
+	case 48, 49, 50, 51, 52, 53, 54, 55, 56, 57:
+		s.advanceTilEndOfNumber(true)
+
+		s.addToken(NewToken(Number, s.source[s.start:s.current], s.line, nil))
 	default:
 		panic("TODO")
+	}
+}
+
+func (s *Scanner) advanceTilEndOfNumber(canDot bool) {
+	for next, ok := s.peek(); ok && (isASCIIDigit(next) || (canDot && next == '.')); next, ok = s.peek() {
+		// if found dot, flip bool
+		if next == '.' {
+			canDot = false
+		}
+
+		// keep advancing until its no longer a digit
+		s.advance()
 	}
 }
 
