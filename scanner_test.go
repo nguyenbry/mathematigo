@@ -184,6 +184,9 @@ func TestWhitespaceLineNumIncrements(t *testing.T) {
 			Text: []rune("!"),
 			Line: 0,
 		},
+		{
+			Type: NewLine,
+		},
 	}, s.scanTokens())
 
 	assert.Equal(t, 1, s.line)
@@ -202,6 +205,9 @@ func TestTokenAfterWhitespaceHasCorrectLineNum(t *testing.T) {
 			Type: Bang,
 			Text: []rune("!"),
 			Line: 0,
+		},
+		{
+			Type: NewLine,
 		},
 		{
 			Type: Dot,
@@ -232,6 +238,160 @@ func TestStringToken(t *testing.T) {
 			Text:    []rune("\"hey\""),
 			Line:    0,
 			Literal: []rune("hey"),
+		},
+	}, s.scanTokens())
+}
+
+func TestIsASCIIDigit(t *testing.T) {
+	rs := []rune("0123456789")
+
+	for _, x := range rs {
+		assert.True(t, isASCIIDigit(x))
+	}
+}
+
+func TestNumberStartsWithDot(t *testing.T) {
+	s := NewScanner(" .1234 ")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune(".1234"),
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestInteger(t *testing.T) {
+	s := NewScanner("73824")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("73824"),
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestSpaceAfterDotDoesNotResultInNumberToken(t *testing.T) {
+	s := NewScanner(" . 1234 ")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Dot,
+			Text: []rune("."),
+			Line: 0,
+		},
+		{
+			Type: Number,
+			Text: []rune("1234"),
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestDecimal(t *testing.T) {
+	s := NewScanner("73824.2")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("73824.2"),
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestDecimalWithTwoDots(t *testing.T) {
+	s := NewScanner("73824..2")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("73824."),
+			Line: 0,
+		},
+		{
+			Type: Number,
+			Text: []rune(".2"),
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestIntegerWithTwoDots(t *testing.T) {
+	s := NewScanner("1234..")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("1234."),
+			Line: 0,
+		},
+		{
+			Type: Dot,
+			Text: []rune("."),
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestIntegerWithDotsAndWhitespace(t *testing.T) {
+	s := NewScanner("1234.. .")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("1234."),
+			Line: 0,
+		},
+		{
+			Type: Dot,
+			Text: []rune("."),
+			Line: 0,
+		},
+		{
+			Type: Dot,
+			Text: []rune("."),
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestDecimalWithOtherSymbols(t *testing.T) {
+	s := NewScanner("728.3 < 391 + \n 'hi'")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("728.3"),
+			Line: 0,
+		},
+		{
+			Type: Lt,
+			Text: []rune("<"),
+			Line: 0,
+		},
+		{
+			Type: Number,
+			Text: []rune("391"),
+			Line: 0,
+		},
+		{
+			Type: Plus,
+			Text: []rune("+"),
+			Line: 0,
+		},
+		{
+			Type: NewLine,
+			Line: 0,
+		},
+		{
+			Type:    String,
+			Text:    []rune("'hi'"),
+			Literal: []rune("hi"),
+			Line:    1,
 		},
 	}, s.scanTokens())
 }

@@ -19,6 +19,8 @@ const (
 	Gt
 	Slash
 	String
+	NewLine
+	Number
 )
 
 type Token struct {
