@@ -110,6 +110,8 @@ func (s *Scanner) scanToken() {
 		}
 	case '*':
 		s.addToken(NewToken(Star, s.source[s.start:s.current], s.line, nil))
+	case ';':
+		s.addToken(NewToken(Semi, s.source[s.start:s.current], s.line, nil))
 	case '/':
 		s.addToken(NewToken(Slash, s.source[s.start:s.current], s.line, nil))
 	case '<':

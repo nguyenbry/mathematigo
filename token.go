@@ -22,6 +22,7 @@ const (
 	NewLine
 	Number
 	Ident
+	Semi
 )
 
 var ReservedIdentifiers map[string]struct{} = map[string]struct{}{
@@ -31,13 +32,32 @@ var ReservedIdentifiers map[string]struct{} = map[string]struct{}{
 	"not": {},
 }
 
+type SmartRune []rune
+
+func (s SmartRune) equals(other SmartRune) bool {
+	if len(s) != len(other) {
+		return false
+	}
+
+	for i, val := range s {
+		if val != other[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+var False SmartRune = []rune("false")
+var True SmartRune = []rune("true")
+
 type Token struct {
 	Type TokenType
 
 	// how it appeared in source code
-	Text []rune
+	Text SmartRune
 	// the value itself. best way to think about this is a string without quotes, but .Text will have the quotes
-	Literal []rune
+	Literal SmartRune
 	Line    int
 }
 
