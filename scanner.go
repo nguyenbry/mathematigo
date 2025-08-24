@@ -78,6 +78,14 @@ func isASCIIDigit(r rune) bool {
 	return 48 <= r && r <= 57
 }
 
+func isASCIIAlpha(r rune) bool {
+	return (65 <= r && r <= 90) || (97 <= r && r <= 122)
+}
+
+func isASCIIAlphanumeric(r rune) bool {
+	return isASCIIAlpha(r) || isASCIIDigit(r)
+}
+
 func (s *Scanner) scanToken() {
 	r := s.advance()
 
@@ -141,8 +149,21 @@ func (s *Scanner) scanToken() {
 
 		s.addToken(NewToken(Number, s.source[s.start:s.current], s.line, nil))
 	default:
-		panic("TODO")
+		if isIdentifierChar(r) {
+			for next, ok := s.peek(); ok && isIdentifierChar(next); next, ok = s.peek() {
+				s.advance()
+			}
+
+			s.addToken(NewToken(Ident, s.source[s.start:s.current], s.line, nil))
+		} else {
+			panic("TODO")
+		}
+
 	}
+}
+
+func isIdentifierChar(r rune) bool {
+	return r == '_' || isASCIIAlphanumeric(r)
 }
 
 func (s *Scanner) advanceTilEndOfNumber(canDot bool) {

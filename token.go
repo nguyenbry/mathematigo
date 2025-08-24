@@ -21,7 +21,15 @@ const (
 	String
 	NewLine
 	Number
+	Ident
 )
+
+var ReservedIdentifiers map[string]struct{} = map[string]struct{}{
+	"xor": {},
+	"and": {},
+	"or":  {},
+	"not": {},
+}
 
 type Token struct {
 	Type TokenType

@@ -395,3 +395,120 @@ func TestDecimalWithOtherSymbols(t *testing.T) {
 		},
 	}, s.scanTokens())
 }
+
+func TestStringPreservesSingleOrDoubleQuotes(t *testing.T) {
+	s := NewScanner("'1'")
+
+	assert.Equal(t, []Token{
+		{
+			Type:    String,
+			Text:    []rune("'1'"),
+			Line:    0,
+			Literal: []rune("1"),
+		},
+	}, s.scanTokens())
+
+	s = NewScanner("\"2\"")
+
+	assert.Equal(t, []Token{
+		{
+			Type:    String,
+			Text:    []rune("\"2\""),
+			Line:    0,
+			Literal: []rune("2"),
+		},
+	}, s.scanTokens())
+}
+
+func TestIdent(t *testing.T) {
+	s := NewScanner("'1' + 1abc \n")
+
+	assert.Equal(t, []Token{
+		{
+			Type:    String,
+			Text:    []rune("'1'"),
+			Line:    0,
+			Literal: []rune("1"),
+		},
+		{
+			Type: Plus,
+			Text: []rune("+"),
+			Line: 0,
+		},
+		{
+			Type: Number,
+			Text: []rune("1"),
+			Line: 0,
+		},
+		{
+			Type: Ident,
+			Text: []rune("abc"),
+			Line: 0,
+		},
+		{
+			Type: NewLine,
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestIdentWithUnderscoreSimple(t *testing.T) {
+	s := NewScanner("_")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Ident,
+			Text: []rune("_"),
+		},
+	}, s.scanTokens())
+}
+
+func TestIdentWithUnderscoreSimple2(t *testing.T) {
+	s := NewScanner("_928u")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Ident,
+			Text: []rune("_928u"),
+		},
+	}, s.scanTokens())
+}
+
+func TestIdentWithUnderscoreAndWhitespace(t *testing.T) {
+	s := NewScanner("_928u\t\r")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Ident,
+			Text: []rune("_928u"),
+		},
+	}, s.scanTokens())
+}
+
+func TestMultipleNewLinesHaveCorrectLineNum(t *testing.T) {
+	s := NewScanner("_928u\n\n\t\r\n. ")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Ident,
+			Text: []rune("_928u"),
+		},
+		{
+			Type: NewLine,
+			Line: 0,
+		},
+		{
+			Type: NewLine,
+			Line: 1,
+		},
+		{
+			Type: NewLine,
+			Line: 2,
+		},
+		{
+			Type: Dot,
+			Text: []rune("."),
+			Line: 3,
+		},
+	}, s.scanTokens())
+}
