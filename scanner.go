@@ -114,6 +114,8 @@ func (s *Scanner) scanToken() {
 		s.addToken(NewToken(Semi, s.source[s.start:s.current], s.line, nil))
 	case '/':
 		s.addToken(NewToken(Slash, s.source[s.start:s.current], s.line, nil))
+	case ',':
+		s.addToken(NewToken(Comma, s.source[s.start:s.current], s.line, nil))
 	case '<':
 		if s.matchNext('=') {
 			s.addToken(NewToken(Lteq, s.source[s.start:s.current], s.line, nil))
@@ -160,7 +162,6 @@ func (s *Scanner) scanToken() {
 		} else {
 			panic("TODO")
 		}
-
 	}
 }
 
@@ -169,7 +170,7 @@ func isIdentifierChar(r rune) bool {
 }
 
 func (s *Scanner) advanceTilEndOfNumber(canDot bool) {
-	for next, ok := s.peek(); ok && (isASCIIDigit(next) || (canDot && next == '.')); next, ok = s.peek() {
+	for next, ok := s.peek(); ok && (next == '!' || isASCIIDigit(next) || (canDot && next == '.')); next, ok = s.peek() {
 		// if found dot, flip bool
 		if next == '.' {
 			canDot = false

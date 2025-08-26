@@ -126,3 +126,147 @@ func TestGroupingErrors(t *testing.T) {
 	assert.Nil(t, ex)
 	assert.NotNil(t, err)
 }
+
+// func TestParseEmpty(t *testing.T) {
+// 	s := NewScanner(" ")
+
+// 	toks := s.scanTokens()
+
+// 	p := NewParser(toks)
+
+// 	ex, err := p.expression()
+
+// 	assert.Nil(t, ex)
+// 	assert.NotNil(t, err)
+// }
+
+func TestParseNoArgsFunction(t *testing.T) {
+	s := NewScanner("myFunc()")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Function{name: Token{
+		Type: Ident,
+		Text: []rune("myFunc"),
+		Line: 0,
+	},
+		args: nil,
+	}, ex)
+}
+
+func TestParseFunction1Arg(t *testing.T) {
+	s := NewScanner("myFunc(2)")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Function{name: Token{
+		Type: Ident,
+		Text: []rune("myFunc"),
+		Line: 0,
+	},
+		args: []Expr{Literal{
+			literal: []rune("2"),
+		}},
+	}, ex)
+}
+
+func TestImplicitMult(t *testing.T) {
+	s := NewScanner("2 a")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Binary{
+		left: Literal{
+			literal: []rune("2"),
+		},
+		op: NewToken(Star, []rune("*"), -100, nil),
+		right: Symbol{
+			name: []rune("a"),
+		},
+	},
+		ex)
+}
+
+func TestBlockSimple(t *testing.T) {
+	s := NewScanner("2 \n a")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Block{
+		parts: []Expr{Literal{
+			literal: []rune("2"),
+		},
+			Symbol{
+				name: []rune("a"),
+			}},
+	},
+		ex)
+}
+
+func TestTrailingNewLinesDoesNotProduceBlock(t *testing.T) {
+	s := NewScanner("2 a \n\n\n")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Binary{
+		left: Literal{
+			literal: []rune("2"),
+		},
+		op: NewToken(Star, []rune("*"), -100, nil),
+		right: Symbol{
+			name: []rune("a"),
+		},
+	},
+		ex)
+}
+
+func TestLeadingNewLinesProducesBlock(t *testing.T) {
+	s := NewScanner("\n2 a")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Block{
+		parts: []Expr{
+			Binary{
+				left: Literal{
+					literal: []rune("2"),
+				},
+				op: NewToken(Star, []rune("*"), -100, nil),
+				right: Symbol{
+					name: []rune("a"),
+				},
+			},
+		},
+	},
+		ex)
+}

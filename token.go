@@ -23,6 +23,7 @@ const (
 	Number
 	Ident
 	Semi
+	Comma
 )
 
 var ReservedIdentifiers map[string]struct{} = map[string]struct{}{
