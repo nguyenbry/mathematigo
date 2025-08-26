@@ -75,7 +75,6 @@ func TestMultiplePrimaryCalls(t *testing.T) {
 	asLiteral(t, ex, func(v Literal) {
 		assert.Equal(t, []rune("null"), v.literal)
 	})
-
 }
 
 func TestExpression(t *testing.T) {
@@ -269,4 +268,142 @@ func TestLeadingNewLinesProducesBlock(t *testing.T) {
 		},
 	},
 		ex)
+}
+
+func TestMultipleBlocksWithFunctionCall(t *testing.T) {
+	s := NewScanner("\n2 a\nmyFunc(2)")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Block{
+		parts: []Expr{
+			Binary{
+				left: Literal{
+					literal: []rune("2"),
+				},
+				op: NewToken(Star, []rune("*"), -100, nil),
+				right: Symbol{
+					name: []rune("a"),
+				},
+			},
+			Function{name: Token{
+				Type: Ident,
+				Text: []rune("myFunc"),
+				Line: 2,
+			},
+				args: []Expr{Literal{
+					literal: []rune("2"),
+				}},
+			},
+		},
+	},
+		ex)
+}
+
+func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
+	s := NewScanner("\n2 a\nmyFunc(2) * 2")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Block{
+		parts: []Expr{
+			Binary{
+				left: Literal{
+					literal: []rune("2"),
+				},
+				op: NewToken(Star, []rune("*"), -100, nil),
+				right: Symbol{
+					name: []rune("a"),
+				},
+			},
+			Binary{
+				left: Function{name: Token{
+					Type: Ident,
+					Text: []rune("myFunc"),
+					Line: 2,
+				},
+					args: []Expr{Literal{
+						literal: []rune("2"),
+					}},
+				},
+				op: NewToken(Star, []rune("*"), 2, nil),
+				right: Literal{
+					literal: []rune("2"),
+				},
+			},
+		},
+	},
+		ex)
+}
+
+func TestNewLineInFunctionArgs(t *testing.T) {
+	s := NewScanner("myFunc(2 \n 3)")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.NotNil(t, err)
+	assert.Nil(t, ex)
+}
+
+func TestFactorial(t *testing.T) {
+	s := NewScanner("a!")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Unary{
+		op: Token{
+			Type: Bang,
+			Text: []rune("!"),
+			Line: -101,
+		},
+		content: Symbol{
+			name: []rune("a"),
+		},
+	}, ex)
+}
+
+func TestFactorialAndUnaryMinusPrecedence(t *testing.T) {
+	s := NewScanner("-a!")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Unary{
+		op: Token{
+			Type: Minus,
+			Text: []rune("-"),
+			Line: 0,
+		},
+		content: Unary{
+			op: Token{
+				Type: Bang,
+				Text: []rune("!"),
+				Line: -101,
+			},
+			content: Symbol{
+				name: []rune("a"),
+			},
+		},
+	}, ex)
 }

@@ -164,38 +164,52 @@ func (p *Parser) primary() (Expr, error) {
 
 				f := Function{name: curr, args: nil}
 
-				next, ok = p.peek()
-
-				if !ok {
-					// "func(" <- no ending
-					return nil, ErrTodoUnendedFunction
-				} else if next.Type == CloseParen {
+				if next, ok := p.peek(); ok && next.Type == CloseParen {
+					// simple case myFunc()
 					p.advance()
 					return f, nil
 				}
 
-				for next, ok = p.peek(); ok; next, ok = p.peek() {
-					e, err := p.expression()
+				for next, ok = p.peek(); ok; {
+					arg, err := p.expression()
 
 					if err != nil {
 						return nil, err
 					}
 
-					f.args = append(f.args, e)
-
-					if commaOrClose, ok := p.peek(); ok {
-						switch commaOrClose.Type {
-						case Comma:
-							p.advance()
-						case CloseParen:
-							p.advance()
-							return f, nil
+					if b, ok := arg.(Block); ok {
+						// it is a block
+						if len(b.parts) != 1 {
+							return nil, errors.New("todo special block arg case")
+						} else {
+							f.args = append(f.args, b.parts[0])
 						}
 					} else {
+						f.args = append(f.args, arg)
+
+					}
+
+					next, ok = p.peek() // next iter here because I need value
+
+					if !ok {
 						return nil, ErrTodoUnendedFunction
 					}
+
+					// we have either have expressionComma | expressionClose
+					switch next.Type {
+					case Comma:
+						p.advance()
+					case CloseParen:
+						p.advance()
+						return f, nil
+					default:
+						// must be comma or close
+						return nil, ErrTodoUnendedFunction
+					}
+
 				}
 
+				// if we get here, then the fn hasn't ended
 				return nil, ErrTodoUnendedFunction
 
 			} else {
@@ -251,10 +265,26 @@ func (p *Parser) unary() (Expr, error) {
 			return nil, err
 		}
 
-		return Unary{content: content}, nil
+		return Unary{content: content, op: next}, nil
 	} else {
-		return p.implicit()
+		return p.postfix()
 	}
+}
+
+func (p *Parser) postfix() (Expr, error) {
+	e, err := p.implicit()
+
+	if err != nil {
+		return nil, err
+	}
+
+	for next, ok := p.peek(); ok && next.Type == Bang; next, ok = p.peek() {
+		p.advance()
+
+		e = Unary{op: NewToken(Bang, []rune("!"), -101, nil), content: e}
+	}
+
+	return e, nil
 }
 
 func (p *Parser) expression() (Expr, error) {
