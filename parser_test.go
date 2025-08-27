@@ -149,12 +149,11 @@ func TestParseNoArgsFunction(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Function{name: Token{
-		Type: Ident,
-		Text: []rune("myFunc"),
-		Line: 0,
-	},
-		args: nil,
+	assert.Equal(t, FunctionNode{
+		Fn: SymbolNode{
+			Name: "myFunc",
+		},
+		Args: nil,
 	}, ex)
 }
 
@@ -168,12 +167,11 @@ func TestParseFunction1Arg(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Function{name: Token{
-		Type: Ident,
-		Text: []rune("myFunc"),
-		Line: 0,
-	},
-		args: []Expr{Literal{
+	assert.Equal(t, FunctionNode{
+		Fn: SymbolNode{
+			Name: "myFunc",
+		},
+		Args: []MathNode{Literal{
 			literal: []rune("2"),
 		}},
 	}, ex)
@@ -196,6 +194,34 @@ func TestImplicitMult(t *testing.T) {
 		op: NewToken(Star, []rune("*"), -100, nil),
 		right: Symbol{
 			name: []rune("a"),
+		},
+	},
+		ex)
+}
+
+func TestImplicitMult2(t *testing.T) {
+	s := NewScanner("1a 2")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	assert.Nil(t, err)
+	assert.NotNil(t, ex)
+
+	assert.Equal(t, Binary{
+		left: Binary{
+			left: Literal{
+				literal: []rune("1"),
+			},
+			op: NewToken(Star, []rune("*"), -100, nil),
+			right: Symbol{
+				name: []rune("a"),
+			},
+		},
+		op: NewToken(Star, []rune("*"), -100, nil),
+		right: Literal{
+			literal: []rune("2"),
 		},
 	},
 		ex)
@@ -291,12 +317,10 @@ func TestMultipleBlocksWithFunctionCall(t *testing.T) {
 					name: []rune("a"),
 				},
 			},
-			Function{name: Token{
-				Type: Ident,
-				Text: []rune("myFunc"),
-				Line: 2,
+			FunctionNode{Fn: SymbolNode{
+				Name: ("myFunc"),
 			},
-				args: []Expr{Literal{
+				Args: []MathNode{Literal{
 					literal: []rune("2"),
 				}},
 			},
@@ -327,12 +351,10 @@ func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
 				},
 			},
 			Binary{
-				left: Function{name: Token{
-					Type: Ident,
-					Text: []rune("myFunc"),
-					Line: 2,
+				left: FunctionNode{Fn: SymbolNode{
+					Name: "myFunc",
 				},
-					args: []Expr{Literal{
+					Args: []MathNode{Literal{
 						literal: []rune("2"),
 					}},
 				},

@@ -49,6 +49,7 @@ func (p *Parser) term() (Expr, error) {
 		return nil, err
 	}
 
+	// handle ( ( "-" | "+" ) factor )*
 	for next, ok := p.peek(); ok && (next.Type == Minus || next.Type == Plus); next, ok = p.peek() {
 		p.advance()
 
@@ -162,12 +163,12 @@ func (p *Parser) primary() (Expr, error) {
 				// is function call
 				p.advance()
 
-				f := Function{name: curr, args: nil}
+				fb := newFunctionNodeBuilder().withFn(string(curr.Text))
 
 				if next, ok := p.peek(); ok && next.Type == CloseParen {
 					// simple case myFunc()
 					p.advance()
-					return f, nil
+					return fb.build(), nil
 				}
 
 				for next, ok = p.peek(); ok; {
@@ -180,13 +181,13 @@ func (p *Parser) primary() (Expr, error) {
 					if b, ok := arg.(Block); ok {
 						// it is a block
 						if len(b.parts) != 1 {
+							// TODO
 							return nil, errors.New("todo special block arg case")
 						} else {
-							f.args = append(f.args, b.parts[0])
+							fb = fb.withArg(b.parts[0])
 						}
 					} else {
-						f.args = append(f.args, arg)
-
+						fb = fb.withArg(arg)
 					}
 
 					next, ok = p.peek() // next iter here because I need value
@@ -201,7 +202,7 @@ func (p *Parser) primary() (Expr, error) {
 						p.advance()
 					case CloseParen:
 						p.advance()
-						return f, nil
+						return fb.build(), nil
 					default:
 						// must be comma or close
 						return nil, ErrTodoUnendedFunction
@@ -413,14 +414,14 @@ type Block struct {
 	parts []Expr
 }
 
-type Function struct {
-	name Token
-	args []Expr
-}
-
 var _ Expr = Literal{}
 var _ Expr = Grouping{}
 var _ Expr = Unary{}
 var _ Expr = Binary{}
 var _ Expr = Symbol{}
 var _ Expr = Block{}
+
+// ( "e" ("+" | "-")? digit+ )?
+// .12
+// 0.12
+// .12e

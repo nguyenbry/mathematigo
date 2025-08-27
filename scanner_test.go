@@ -262,6 +262,154 @@ func TestNumberStartsWithDot(t *testing.T) {
 	}, s.scanTokens())
 }
 
+func TestNumberBangNumber(t *testing.T) {
+	s := NewScanner("1!1")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("1"),
+			Line: 0,
+		},
+		{
+			Type: Bang,
+			Text: []rune("!"),
+			Line: 0,
+		},
+		{
+			Type: Number,
+			Text: []rune("1"),
+			Line: 0,
+		},
+	}, s.scanTokens())
+}
+
+func TestScientificNumberLookalike(t *testing.T) {
+	s := NewScanner("9e ")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("9"),
+			Line: 0,
+		},
+		{
+			Type: Ident,
+			Text: []rune("e"),
+		},
+	}, s.scanTokens())
+}
+
+func TestScientifics(t *testing.T) {
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("9e1"),
+			Line: 0,
+		},
+	}, NewScanner("9e1 ").scanTokens())
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("9e+1"),
+			Line: 0,
+		},
+	}, NewScanner("9e+1 ").scanTokens())
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("9e-1"),
+			Line: 0,
+		},
+	}, NewScanner("9e-1 ").scanTokens())
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("9e-02"),
+			Line: 0,
+		},
+	}, NewScanner("9e-02 ").scanTokens())
+
+	assert.Equal(t, []Token{
+		{
+			Type: Plus,
+			Text: []rune("+"),
+			Line: 0,
+		},
+		{
+			Type: Number,
+			Text: []rune("9e-02"),
+			Line: 0,
+		},
+		{
+			Type: Plus,
+			Text: []rune("+"),
+			Line: 0,
+		},
+	}, NewScanner("+ 9e-02+ ").scanTokens())
+}
+
+func TestScientificNumberWithDotBeforeE(t *testing.T) {
+	assert.Equal(t, []Token{
+		{
+			Type: Plus,
+			Text: []rune("+"),
+			Line: 0,
+		},
+		{
+			Type: Number,
+			Text: []rune("92.e-02"),
+			Line: 0,
+		},
+		{
+			Type: Plus,
+			Text: []rune("+"),
+			Line: 0,
+		},
+	}, NewScanner("+ 92.e-02+ ").scanTokens())
+}
+
+func TestDecimalScientific(t *testing.T) {
+	assert.Equal(t, []Token{
+		{
+			Type: Plus,
+			Text: []rune("+"),
+			Line: 0,
+		},
+		{
+			Type: Number,
+			Text: []rune(".92e-02"),
+			Line: 0,
+		},
+		{
+			Type: Plus,
+			Text: []rune("+"),
+			Line: 0,
+		},
+	}, NewScanner("+ .92e-02 + ").scanTokens())
+
+	// assert.Equal(t, []Token{
+	// 	{
+	// 		Type: Slash,
+	// 		Text: []rune("/"),
+	// 		Line: 0,
+	// 	},
+	// 	{
+	// 		Type: Number,
+	// 		Text: []rune(".92e-02"),
+	// 		Line: 0,
+	// 	},
+	// 	{
+	// 		Type: Plus,
+	// 		Text: []rune("+"),
+	// 		Line: 0,
+	// 	},
+	// }, NewScanner(" / .92e-02 + ").scanTokens())
+}
+
 func TestInteger(t *testing.T) {
 	s := NewScanner("73824")
 
@@ -511,4 +659,60 @@ func TestMultipleNewLinesHaveCorrectLineNum(t *testing.T) {
 			Line: 3,
 		},
 	}, s.scanTokens())
+}
+
+func TestSingleScanTokenBinaryNumberRequiresDigitAfterB(t *testing.T) {
+	s := NewScanner("0b ")
+	assert.NotNil(t, s.scanToken())
+	// assert.Equal(t, []Token{}, s.scanTokens())
+}
+
+func TestSingleScanTokenBinaryNumberRequiresDigitAfterB2(t *testing.T) {
+	s := NewScanner("0b.")
+	assert.NotNil(t, s.scanToken())
+	// assert.Equal(t, []Token{}, s.scanTokens())
+}
+
+func TestSingleScanTokenBinaryNumberSimple(t *testing.T) {
+	s := NewScanner("0b0")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("0b0"),
+		},
+	}, s.scanTokens())
+}
+
+func TestSingleScanTokenBinaryNumberIncludesSpace(t *testing.T) {
+	s := NewScanner("0b0.")
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("0b0."),
+		},
+	}, s.scanTokens())
+}
+
+func TestSingleScanTokenBinaryNumberLookalike(t *testing.T) {
+	s := NewScanner("0b2")
+
+	assert.NotNil(t, s.scanToken())
+}
+
+func TestIntegerBeforeBinary(t *testing.T) {
+	s := NewScanner("20b1") // looks like 2(0b1)
+
+	assert.Equal(t, []Token{
+		{
+			Type: Number,
+			Text: []rune("20"),
+		},
+		{
+			Type: Ident,
+			Text: []rune("b1"),
+		},
+	}, s.scanTokens())
+
 }
