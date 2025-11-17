@@ -24,6 +24,8 @@ const (
 	Ident
 	Semi
 	Comma
+	Pipe
+	Ampersand
 )
 
 var ReservedIdentifiers map[string]struct{} = map[string]struct{}{

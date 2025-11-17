@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPrimaryFalse(t *testing.T) {
@@ -18,11 +19,7 @@ func TestPrimaryFalse(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	if v, ok := ex.(Literal); ok {
-		assert.Equal(t, []rune("false"), v.literal)
-	} else {
-		t.Fatal()
-	}
+	assert.Equal(t, BooleanNode(false), ex)
 }
 
 func TestPrimaryConsumes(t *testing.T) {
@@ -40,14 +37,6 @@ func TestPrimaryConsumes(t *testing.T) {
 	assert.Equal(t, 1, p.current)
 }
 
-func asLiteral(t *testing.T, ex Expr, f func(Literal)) {
-	if v, ok := ex.(Literal); ok {
-		f(v)
-	} else {
-		t.Fatal("not Literal")
-	}
-}
-
 func TestMultiplePrimaryCalls(t *testing.T) {
 	s := NewScanner(" false true null\n")
 
@@ -58,23 +47,17 @@ func TestMultiplePrimaryCalls(t *testing.T) {
 	ex, err := p.primary()
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
-	asLiteral(t, ex, func(v Literal) {
-		assert.Equal(t, []rune("false"), v.literal)
-	})
+	require.Equal(t, BooleanNode(false), ex)
 
 	ex, err = p.primary()
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
-	asLiteral(t, ex, func(v Literal) {
-		assert.Equal(t, []rune("true"), v.literal)
-	})
+	require.Equal(t, BooleanNode(true), ex)
 
 	ex, err = p.primary()
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
-	asLiteral(t, ex, func(v Literal) {
-		assert.Equal(t, []rune("null"), v.literal)
-	})
+	require.Equal(t, NullNode{}, ex)
 }
 
 func TestExpression(t *testing.T) {
@@ -89,11 +72,7 @@ func TestExpression(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	if v, ok := ex.(Literal); ok {
-		assert.Equal(t, []rune("false"), v.literal)
-	} else {
-		t.Fatal()
-	}
+	assert.Equal(t, BooleanNode(false), ex)
 }
 
 func TestGrouping(t *testing.T) {
@@ -106,10 +85,8 @@ func TestGrouping(t *testing.T) {
 	ex, err := p.expression()
 
 	assert.Nil(t, err)
-	assert.Equal(t, Grouping{
-		content: Literal{
-			literal: []rune("false"),
-		},
+	assert.Equal(t, ParenthesisNode{
+		Content: BooleanNode(false),
 	}, ex)
 }
 
@@ -164,16 +141,14 @@ func TestParseFunction1Arg(t *testing.T) {
 
 	ex, err := p.expression()
 
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, FunctionNode{
 		Fn: SymbolNode{
 			Name: "myFunc",
 		},
-		Args: []MathNode{Literal{
-			literal: []rune("2"),
-		}},
+		Args: []MathNode{FloatNode(float64(2))},
 	}, ex)
 }
 
@@ -187,14 +162,12 @@ func TestImplicitMult(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Binary{
-		left: Literal{
-			literal: []rune("2"),
+	assert.Equal(t, OperatorNode{
+		Args: []MathNode{
+			FloatNode(float64(2)),
+			SymbolNode{Name: "a"},
 		},
-		op: NewToken(Star, []rune("*"), -100, nil),
-		right: Symbol{
-			name: []rune("a"),
-		},
+		Op: "*",
 	},
 		ex)
 }
@@ -209,20 +182,18 @@ func TestImplicitMult2(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Binary{
-		left: Binary{
-			left: Literal{
-				literal: []rune("1"),
+	assert.Equal(t, OperatorNode{
+		Args: []MathNode{
+			OperatorNode{
+				Args: []MathNode{
+					FloatNode(float64(1)),
+					SymbolNode{Name: "a"},
+				},
+				Op: "*",
 			},
-			op: NewToken(Star, []rune("*"), -100, nil),
-			right: Symbol{
-				name: []rune("a"),
-			},
+			FloatNode(float64(2)),
 		},
-		op: NewToken(Star, []rune("*"), -100, nil),
-		right: Literal{
-			literal: []rune("2"),
-		},
+		Op: "*",
 	},
 		ex)
 }
@@ -237,13 +208,11 @@ func TestBlockSimple(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Block{
-		parts: []Expr{Literal{
-			literal: []rune("2"),
+	assert.Equal(t, BlockNode{
+		Blocks: []MathNode{
+			FloatNode(float64(2)),
+			SymbolNode{Name: "a"},
 		},
-			Symbol{
-				name: []rune("a"),
-			}},
 	},
 		ex)
 }
@@ -258,14 +227,12 @@ func TestTrailingNewLinesDoesNotProduceBlock(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Binary{
-		left: Literal{
-			literal: []rune("2"),
+	assert.Equal(t, OperatorNode{
+		Args: []MathNode{
+			FloatNode(float64(2)),
+			SymbolNode{Name: "a"},
 		},
-		op: NewToken(Star, []rune("*"), -100, nil),
-		right: Symbol{
-			name: []rune("a"),
-		},
+		Op: "*",
 	},
 		ex)
 }
@@ -280,16 +247,14 @@ func TestLeadingNewLinesProducesBlock(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Block{
-		parts: []Expr{
-			Binary{
-				left: Literal{
-					literal: []rune("2"),
+	assert.Equal(t, BlockNode{
+		Blocks: []MathNode{
+			OperatorNode{
+				Args: []MathNode{
+					FloatNode(float64(2)),
+					SymbolNode{Name: "a"},
 				},
-				op: NewToken(Star, []rune("*"), -100, nil),
-				right: Symbol{
-					name: []rune("a"),
-				},
+				Op: "*",
 			},
 		},
 	},
@@ -306,23 +271,19 @@ func TestMultipleBlocksWithFunctionCall(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Block{
-		parts: []Expr{
-			Binary{
-				left: Literal{
-					literal: []rune("2"),
+	assert.Equal(t, BlockNode{
+		Blocks: []MathNode{
+			OperatorNode{
+				Args: []MathNode{
+					FloatNode(float64(2)),
+					SymbolNode{Name: "a"},
 				},
-				op: NewToken(Star, []rune("*"), -100, nil),
-				right: Symbol{
-					name: []rune("a"),
-				},
+				Op: "*",
 			},
 			FunctionNode{Fn: SymbolNode{
-				Name: ("myFunc"),
+				Name: "myFunc",
 			},
-				Args: []MathNode{Literal{
-					literal: []rune("2"),
-				}},
+				Args: []MathNode{FloatNode(float64(2))},
 			},
 		},
 	},
@@ -339,29 +300,25 @@ func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Block{
-		parts: []Expr{
-			Binary{
-				left: Literal{
-					literal: []rune("2"),
+	assert.Equal(t, BlockNode{
+		Blocks: []MathNode{
+			OperatorNode{
+				Args: []MathNode{
+					FloatNode(float64(2)),
+					SymbolNode{Name: "a"},
 				},
-				op: NewToken(Star, []rune("*"), -100, nil),
-				right: Symbol{
-					name: []rune("a"),
-				},
+				Op: "*",
 			},
-			Binary{
-				left: FunctionNode{Fn: SymbolNode{
-					Name: "myFunc",
+			OperatorNode{
+				Args: []MathNode{
+					FunctionNode{Fn: SymbolNode{
+						Name: "myFunc",
+					},
+						Args: []MathNode{FloatNode(float64(2))},
+					},
+					FloatNode(float64(2)),
 				},
-					Args: []MathNode{Literal{
-						literal: []rune("2"),
-					}},
-				},
-				op: NewToken(Star, []rune("*"), 2, nil),
-				right: Literal{
-					literal: []rune("2"),
-				},
+				Op: "*",
 			},
 		},
 	},
@@ -389,15 +346,11 @@ func TestFactorial(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Unary{
-		op: Token{
-			Type: Bang,
-			Text: []rune("!"),
-			Line: -101,
+	assert.Equal(t, OperatorNode{
+		Args: []MathNode{
+			SymbolNode{Name: "a"},
 		},
-		content: Symbol{
-			name: []rune("a"),
-		},
+		Op: "!",
 	}, ex)
 }
 
@@ -411,21 +364,286 @@ func TestFactorialAndUnaryMinusPrecedence(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, Unary{
-		op: Token{
-			Type: Minus,
-			Text: []rune("-"),
-			Line: 0,
-		},
-		content: Unary{
-			op: Token{
-				Type: Bang,
-				Text: []rune("!"),
-				Line: -101,
-			},
-			content: Symbol{
-				name: []rune("a"),
+	assert.Equal(t, OperatorNode{
+		Args: []MathNode{
+			OperatorNode{
+				Args: []MathNode{
+					SymbolNode{Name: "a"},
+				},
+				Op: "!",
 			},
 		},
+		Op: "-",
+	}, ex)
+}
+
+func TestParseFunctionMultipleArgs(t *testing.T) {
+	s := NewScanner("myFunc(2, 3, x)")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, FunctionNode{
+		Fn: SymbolNode{
+			Name: "myFunc",
+		},
+		Args: []MathNode{
+			FloatNode(float64(2)),
+			FloatNode(float64(3)),
+			SymbolNode{Name: "x"},
+		},
+	}, ex)
+}
+
+func TestParseAmpersandBindsTighterThanPipe(t *testing.T) {
+	s := NewScanner("a | b & c")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			SymbolNode{Name: "a"},
+			OperatorNode{
+				Args: []MathNode{
+					SymbolNode{Name: "b"},
+					SymbolNode{Name: "c"},
+				},
+				Op: "&",
+			},
+		},
+		Op: "|",
+	}, ex)
+
+	s = NewScanner("a & b | c")
+
+	p = NewParser(s.scanTokens())
+
+	ex, err = p.expression()
+
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			OperatorNode{
+				Args: []MathNode{
+					SymbolNode{Name: "a"},
+					SymbolNode{Name: "b"},
+				},
+				Op: "&",
+			},
+			SymbolNode{Name: "c"},
+		},
+		Op: "|",
+	}, ex)
+}
+
+func TestParsePipe(t *testing.T) {
+	s := NewScanner("(\"X\" | \"y\")")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, ParenthesisNode{
+		Content: OperatorNode{
+			Args: []MathNode{
+				ConstantNode("X"),
+				ConstantNode("y"),
+			},
+			Op: "|",
+		},
+	}, ex)
+
+}
+
+func TestParseDoubleEqualsTighterThanAmpersand(t *testing.T) {
+	s := NewScanner("a == b & c")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			OperatorNode{
+				Args: []MathNode{
+					SymbolNode{Name: "a"},
+					SymbolNode{Name: "b"},
+				},
+				Op: "==",
+			},
+			SymbolNode{Name: "c"},
+		},
+		Op: "&",
+	}, ex)
+
+	s = NewScanner("a & b == c")
+
+	p = NewParser(s.scanTokens())
+
+	ex, err = p.expression()
+
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			SymbolNode{Name: "a"},
+			OperatorNode{
+				Args: []MathNode{
+					SymbolNode{Name: "b"},
+					SymbolNode{Name: "c"},
+				},
+				Op: "==",
+			},
+		},
+		Op: "&",
+	}, ex)
+}
+
+func TestImplicitMultiplicationCannotHappenForConstantNode(t *testing.T) {
+	s := NewScanner(`x "abc"`)
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.Parse()
+
+	require.Error(t, err)
+	require.Nil(t, ex)
+
+	s = NewScanner(`x"abc"`)
+	p = NewParser(s.scanTokens())
+	ex, err = p.Parse()
+
+	require.Error(t, err)
+	require.Nil(t, ex)
+
+	s = NewScanner(`x ("abc")`)
+
+	p = NewParser(s.scanTokens())
+
+	ex, err = p.Parse()
+
+	require.NoError(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, FunctionNode{
+		Fn: SymbolNode{Name: "x"},
+		Args: []MathNode{
+			ConstantNode("abc"),
+		},
+	}, ex)
+}
+
+func TestParseImplicitMult(t *testing.T) {
+	s := NewScanner("(1+2)(3+4)")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.Parse()
+
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			ParenthesisNode{
+				Content: OperatorNode{
+					Args: []MathNode{
+						FloatNode(1),
+						FloatNode(2),
+					},
+					Op: "+",
+				},
+			},
+			ParenthesisNode{
+				Content: OperatorNode{
+					Args: []MathNode{
+						FloatNode(3),
+						FloatNode(4),
+					},
+					Op: "+",
+				},
+			},
+		},
+		Op: "*",
+	}, ex)
+}
+
+func TestParseComplexFunction(t *testing.T) {
+	s := NewScanner("pattern_match(\"x\", \"2023-12-23 15:41\", \"2024-02-21 23:59\") >= 1")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			FunctionNode{
+				Fn: SymbolNode{Name: "pattern_match"},
+				Args: []MathNode{
+					ConstantNode("x"),
+					ConstantNode("2023-12-23 15:41"),
+					ConstantNode("2024-02-21 23:59"),
+				},
+			},
+			FloatNode(1),
+		},
+		Op: ">=",
+	}, ex)
+}
+
+func TestParseComplexNestedFunction(t *testing.T) {
+	s := NewScanner("funky(\"y\", concat(\"2023-12-23 \", \"15:41\"), concat(\"2024-02-21 \", \"23:59\")) >= 1")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			FunctionNode{
+				Fn: SymbolNode{Name: "funky"},
+				Args: []MathNode{
+					ConstantNode("y"),
+					FunctionNode{
+						Fn: SymbolNode{Name: "concat"},
+						Args: []MathNode{
+							ConstantNode("2023-12-23 "),
+							ConstantNode("15:41"),
+						},
+					},
+					FunctionNode{
+						Fn: SymbolNode{Name: "concat"},
+						Args: []MathNode{
+							ConstantNode("2024-02-21 "),
+							ConstantNode("23:59"),
+						},
+					},
+				},
+			},
+			FloatNode(1),
+		},
+		Op: ">=",
 	}, ex)
 }

@@ -136,6 +136,12 @@ func (s *Scanner) scanToken() error {
 	case '*':
 		s.addToken(NewToken(Star, s.source[s.start:s.current], s.line, nil))
 		return nil
+	case '|':
+		s.addToken(NewToken(Pipe, s.source[s.start:s.current], s.line, nil))
+		return nil
+	case '&':
+		s.addToken(NewToken(Ampersand, s.source[s.start:s.current], s.line, nil))
+		return nil
 	case ';':
 		s.addToken(NewToken(Semi, s.source[s.start:s.current], s.line, nil))
 		return nil
@@ -196,8 +202,6 @@ func (s *Scanner) scanToken() error {
 
 		justZero := s.current == s.start+1
 
-		fmt.Println("just", justZero)
-
 		if justZero {
 			next, ok := s.peek()
 
@@ -218,7 +222,6 @@ func (s *Scanner) scanToken() error {
 				// default case
 				s.scanScientific()
 				s.addToken(NewToken(Number, s.source[s.start:s.current], s.line, nil))
-
 			}
 		} else {
 			// default case
@@ -228,9 +231,37 @@ func (s *Scanner) scanToken() error {
 
 		return nil
 	case 49, 50, 51, 52, 53, 54, 55, 56, 57:
-		s.advanceTilEndOfNumber(true)
-		s.scanScientific()
+		dotAt := s.advanceTilEndOfNumber(true)
+
+		var numberPart []rune
+		if dotAt == nil {
+			numberPart = s.source[s.start:s.current]
+		} else if s.current-1 == *dotAt {
+			numberPart = s.source[s.start:(*dotAt - 1)]
+		} else {
+			numberPart = s.source[s.start:*dotAt]
+		}
+
+		// this will mutate s.current, so we save it above
+		sci, err := s.scanScientific()
+
+		if err != nil {
+			return err
+		}
+
+		toParse := string(numberPart)
+		if sci != nil {
+			// append and parse as float
+			toParse = fmt.Sprintf("%s%s", toParse, sci.string())
+		}
+
 		s.addToken(NewToken(Number, s.source[s.start:s.current], s.line, nil))
+
+		// i, err := strconv.ParseInt(toParse, 10, 64)
+
+		// if err != nil {
+		// 	return err
+		// }
 
 		return nil
 	default:
@@ -248,11 +279,37 @@ func (s *Scanner) scanToken() error {
 	}
 }
 
-func (s *Scanner) scanScientific() {
+func (s *Scanner) isAllZeroes(startInc, endExcl int) bool {
+	for i := startInc; i < endExcl; i++ {
+		if s.source[i] != '0' {
+			return false
+		}
+	}
+
+	return true
+}
+
+type Scientific struct {
+	num      []rune
+	positive bool
+}
+
+func (s Scientific) string() string {
+	pref := ""
+	if s.positive {
+		pref = "e"
+	} else {
+		pref = "e-"
+	}
+
+	return fmt.Sprintf("%s%s", pref, string(s.num))
+}
+
+func (s *Scanner) scanScientific() (*Scientific, error) {
 	next, ok := s.peek()
 
-	if !ok || next != 'e' {
-		return
+	if !ok || (next != 'e' && next != 'E') {
+		return nil, nil
 	}
 
 	// handle scientific
@@ -266,14 +323,28 @@ func (s *Scanner) scanScientific() {
 			// must be scientific, parse til end of digits
 			s.advance() // consume 'e'
 
-			// loop runs at least once
-			for next, ok := s.peek(); ok && isASCIIDigit(next); next, ok = s.peek() {
-				s.advance()
+			out := &Scientific{
+				positive: true,
 			}
 
+			startIdx := s.current
+			// loop runs at least once
+			digits := make([]rune, 1)
+			for next, ok := s.peek(); ok && isASCIIDigit(next); next, ok = s.peek() {
+				digits = append(digits, next)
+				s.advance()
+			}
+			endIdx := s.current + 1
+			out.num = s.source[startIdx:endIdx]
+
+			return out, nil
 		} else if afterE == '-' || afterE == '+' {
 			s.advance() // consume 'e'
 			s.advance() // consume +,-
+
+			out := &Scientific{
+				positive: afterE == '+',
+			}
 
 			mustDigi, ok := s.peek()
 
@@ -281,28 +352,55 @@ func (s *Scanner) scanScientific() {
 				panic("TODO, syntax error")
 			}
 
+			startIdx := s.current
+
 			// loop runs at least once
+			digits := make([]rune, 1)
 			for next, ok := s.peek(); ok && isASCIIDigit(next); next, ok = s.peek() {
+				digits = append(digits, next)
 				s.advance()
 			}
-		}
-	}
 
+			endIdx := s.current + 1
+			out.num = s.source[startIdx:endIdx]
+
+			return out, nil
+		} else {
+			// not scientific
+			return nil, nil
+		}
+	} else {
+		return nil, nil
+	}
 }
 
 func isIdentifierChar(r rune) bool {
 	return r == '_' || isASCIIAlphanumeric(r)
 }
 
-func (s *Scanner) advanceTilEndOfNumber(canDot bool) {
+// the return type is not useful if canDot=false
+func (s *Scanner) advanceTilEndOfNumber(canDot bool) *int {
+	lookedForDot := canDot
+	dotAt := (*int)(nil)
+
 	for next, ok := s.peek(); ok && (isASCIIDigit(next) || (canDot && next == '.')); next, ok = s.peek() {
 		// if found dot, flip bool
 		if next == '.' {
+			at := s.current
+			dotAt = &at
 			canDot = false
 		}
 
 		// keep advancing until its no longer a digit
 		s.advance()
+	}
+
+	foundDot := lookedForDot && !canDot
+
+	if foundDot {
+		return dotAt
+	} else {
+		return nil
 	}
 }
 

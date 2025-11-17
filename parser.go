@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 var End = errors.New("end of tokens")
@@ -40,7 +41,95 @@ func (p *Parser) advance() Token {
 	return out
 }
 
-func (p *Parser) term() (Expr, error) {
+func (p *Parser) or() (MathNode, error) {
+	// or → and ( "|" and )* ;
+
+	curr, err := p.and()
+	if err != nil {
+		return nil, err
+	}
+
+	for next, ok := p.peek(); ok && next.Type == Pipe; next, ok = p.peek() {
+		p.advance() // consume operator
+
+		right, err := p.and()
+		if err != nil {
+			return nil, err
+		}
+
+		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+	}
+
+	return curr, nil
+}
+
+func (p *Parser) and() (MathNode, error) {
+	// bitwiseAnd → comparison ( "&" comparison )* ;
+
+	curr, err := p.equality()
+	if err != nil {
+		return nil, err
+	}
+
+	for next, ok := p.peek(); ok && next.Type == Ampersand; next, ok = p.peek() {
+		p.advance() // consume operator
+
+		right, err := p.equality()
+		if err != nil {
+			return nil, err
+		}
+
+		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+	}
+
+	return curr, nil
+}
+
+func (p *Parser) equality() (MathNode, error) {
+	// equality → comparison ( ( "!=" | "==" ) comparison )* ;
+
+	curr, err := p.comparison()
+	if err != nil {
+		return nil, err
+	}
+
+	for next, ok := p.peek(); ok && (next.Type == BangEq || next.Type == EqEq); next, ok = p.peek() {
+		p.advance() // consume operator
+
+		right, err := p.comparison()
+		if err != nil {
+			return nil, err
+		}
+
+		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+	}
+
+	return curr, nil
+}
+
+func (p *Parser) comparison() (MathNode, error) {
+	// comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+
+	curr, err := p.term()
+	if err != nil {
+		return nil, err
+	}
+
+	for next, ok := p.peek(); ok && (next.Type == Gt || next.Type == Gteq || next.Type == Lt || next.Type == Lteq); next, ok = p.peek() {
+		p.advance() // consume operator
+
+		right, err := p.term()
+		if err != nil {
+			return nil, err
+		}
+
+		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+	}
+
+	return curr, nil
+}
+
+func (p *Parser) term() (MathNode, error) {
 	// term → factor ( ( "-" | "+" ) factor )* ;
 
 	// first time
@@ -51,7 +140,7 @@ func (p *Parser) term() (Expr, error) {
 
 	// handle ( ( "-" | "+" ) factor )*
 	for next, ok := p.peek(); ok && (next.Type == Minus || next.Type == Plus); next, ok = p.peek() {
-		p.advance()
+		p.advance() // consume operator
 
 		right, err := p.factor()
 
@@ -62,13 +151,13 @@ func (p *Parser) term() (Expr, error) {
 				return nil, err
 			}
 		} else {
-			curr = Binary{left: curr, op: next, right: right}
+			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
 		}
 	}
 	return curr, nil
 }
 
-func (p *Parser) factor() (Expr, error) {
+func (p *Parser) factor() (MathNode, error) {
 	// factor → unary ( ( "/" | "*" ) unary )* ;
 
 	// first time
@@ -89,13 +178,13 @@ func (p *Parser) factor() (Expr, error) {
 				return nil, err
 			}
 		} else {
-			curr = Binary{left: curr, op: next, right: right}
+			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
 		}
 	}
 	return curr, nil
 }
 
-func (p *Parser) implicit() (Expr, error) {
+func (p *Parser) implicit() (MathNode, error) {
 	curr, err := p.primary()
 
 	if err != nil {
@@ -108,7 +197,13 @@ func (p *Parser) implicit() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		curr = Binary{left: curr, op: NewToken(Star, []rune("*"), -100, nil), right: right}
+
+		if c, ok := right.(ConstantNode); ok {
+			// return nil, errors.New("cannot have constant node implicit multiplication")
+			return nil, fmt.Errorf("unexpected token: \"%v\"", c.String())
+		}
+
+		curr = OperatorNode{Args: []MathNode{curr, right}, Op: "*"}
 	}
 
 	return curr, nil
@@ -131,12 +226,12 @@ func (p *Parser) canPrimary() bool {
 	case OpenParen:
 		return true
 	default:
-		fmt.Println("canPrimary defaults")
+		// fmt.Println("canPrimary defaults")
 		return false
 	}
 }
 
-func (p *Parser) primary() (Expr, error) {
+func (p *Parser) primary() (MathNode, error) {
 	curr, ok := p.peek()
 
 	if !ok {
@@ -147,12 +242,12 @@ func (p *Parser) primary() (Expr, error) {
 	case Ident:
 		p.advance()
 
-		if curr.Text.equals(False) || curr.Text.equals(True) || curr.Text.equals(SmartRune("null")) {
-			out := Literal{
-				literal: curr.Text,
-			}
-
-			return out, nil
+		if curr.Text.equals(False) {
+			return BooleanNode(false), nil
+		} else if curr.Text.equals(True) {
+			return BooleanNode(true), nil
+		} else if curr.Text.equals(SmartRune("null")) {
+			return NullNode{}, nil
 		}
 
 		// check if function call
@@ -178,13 +273,13 @@ func (p *Parser) primary() (Expr, error) {
 						return nil, err
 					}
 
-					if b, ok := arg.(Block); ok {
+					if b, ok := arg.(BlockNode); ok {
 						// it is a block
-						if len(b.parts) != 1 {
+						if len(b.Blocks) != 1 {
 							// TODO
 							return nil, errors.New("todo special block arg case")
 						} else {
-							fb = fb.withArg(b.parts[0])
+							fb = fb.withArg(b.Blocks[0])
 						}
 					} else {
 						fb = fb.withArg(arg)
@@ -207,7 +302,6 @@ func (p *Parser) primary() (Expr, error) {
 						// must be comma or close
 						return nil, ErrTodoUnendedFunction
 					}
-
 				}
 
 				// if we get here, then the fn hasn't ended
@@ -215,26 +309,30 @@ func (p *Parser) primary() (Expr, error) {
 
 			} else {
 				// is this right?
-				return Symbol{name: curr.Text}, nil
+				return SymbolNode{Name: string(curr.Text)}, nil
 			}
-
 		} else {
 			// at end, return Symbol?
-			return Symbol{name: curr.Text}, nil
+			return SymbolNode{Name: string(curr.Text)}, nil
 		}
-
 	case Number:
 		p.advance()
 
-		return Literal{
-			literal: curr.Text,
-		}, nil
+		toParse := curr.Text
+
+		val, err := strconv.ParseFloat(string(toParse), 64)
+
+		if err != nil {
+			return nil, err
+		}
+
+		out := FloatNode(val)
+
+		return out, nil
 	case String:
 		p.advance()
 
-		return Literal{
-			literal: curr.Literal,
-		}, nil
+		return ConstantNode(string(curr.Literal)), nil
 	case OpenParen:
 		p.advance()
 
@@ -247,7 +345,7 @@ func (p *Parser) primary() (Expr, error) {
 		if next, ok := p.peek(); ok && next.Type == CloseParen {
 			p.advance()
 
-			return Grouping{content: e}, nil
+			return ParenthesisNode{Content: e}, nil
 		} else {
 			return nil, errors.New("Expect ')' after expression.")
 		}
@@ -256,7 +354,7 @@ func (p *Parser) primary() (Expr, error) {
 	}
 }
 
-func (p *Parser) unary() (Expr, error) {
+func (p *Parser) unary() (MathNode, error) {
 	if next, ok := p.peek(); ok && next.Type == Bang || next.Type == Minus {
 		p.advance()
 
@@ -266,13 +364,13 @@ func (p *Parser) unary() (Expr, error) {
 			return nil, err
 		}
 
-		return Unary{content: content, op: next}, nil
+		return OperatorNode{Args: []MathNode{content}, Op: string(next.Text)}, nil
 	} else {
 		return p.postfix()
 	}
 }
 
-func (p *Parser) postfix() (Expr, error) {
+func (p *Parser) postfix() (MathNode, error) {
 	e, err := p.implicit()
 
 	if err != nil {
@@ -281,14 +379,17 @@ func (p *Parser) postfix() (Expr, error) {
 
 	for next, ok := p.peek(); ok && next.Type == Bang; next, ok = p.peek() {
 		p.advance()
-
-		e = Unary{op: NewToken(Bang, []rune("!"), -101, nil), content: e}
+		e = OperatorNode{Args: []MathNode{e}, Op: "!"}
 	}
 
 	return e, nil
 }
 
-func (p *Parser) expression() (Expr, error) {
+func (p *Parser) Parse() (MathNode, error) {
+	return p.expression()
+}
+
+func (p *Parser) expression() (MathNode, error) {
 	// expression → NEWLINE* block (NEWLINE+ block)* NEWLINE*
 	next, ok := p.peek()
 
@@ -305,7 +406,7 @@ func (p *Parser) expression() (Expr, error) {
 			p.advance()
 		}
 
-		b := Block{}
+		b := BlockNode{}
 
 		part, err := p.block()
 
@@ -313,7 +414,7 @@ func (p *Parser) expression() (Expr, error) {
 			return nil, err
 		}
 
-		b.parts = append(b.parts, part)
+		b.Blocks = append(b.Blocks, part)
 
 		// handle (NEWLINE+ block)* NEWLINE*
 		for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
@@ -333,7 +434,7 @@ func (p *Parser) expression() (Expr, error) {
 				return nil, err
 			}
 
-			b.parts = append(b.parts, part)
+			b.Blocks = append(b.Blocks, part)
 		}
 
 		return b, nil
@@ -345,7 +446,7 @@ func (p *Parser) expression() (Expr, error) {
 			return nil, err
 		}
 
-		b := Block{parts: []Expr{part}}
+		b := BlockNode{Blocks: []MathNode{part}}
 
 		for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
 			p.advance() // consume new line
@@ -355,7 +456,7 @@ func (p *Parser) expression() (Expr, error) {
 			}
 
 			if p.isAtEnd() {
-				if len(b.parts) == 1 {
+				if len(b.Blocks) == 1 {
 					return part, nil
 				} else {
 					return b, nil
@@ -368,10 +469,10 @@ func (p *Parser) expression() (Expr, error) {
 				return nil, err
 			}
 
-			b.parts = append(b.parts, part)
+			b.Blocks = append(b.Blocks, part)
 		}
 
-		if len(b.parts) == 1 {
+		if len(b.Blocks) == 1 {
 			return part, nil
 		} else {
 			return b, nil
@@ -379,49 +480,6 @@ func (p *Parser) expression() (Expr, error) {
 	}
 }
 
-func (p *Parser) block() (Expr, error) {
-
-	return p.factor()
+func (p *Parser) block() (MathNode, error) {
+	return p.or()
 }
-
-type Expr interface{}
-
-type Literal struct {
-	literal []rune
-}
-
-type Grouping struct {
-	// non-nil
-	content Expr
-}
-
-type Unary struct {
-	op      Token
-	content Expr
-}
-
-type Binary struct {
-	left  Expr
-	op    Token
-	right Expr
-}
-
-type Symbol struct {
-	name []rune
-}
-
-type Block struct {
-	parts []Expr
-}
-
-var _ Expr = Literal{}
-var _ Expr = Grouping{}
-var _ Expr = Unary{}
-var _ Expr = Binary{}
-var _ Expr = Symbol{}
-var _ Expr = Block{}
-
-// ( "e" ("+" | "-")? digit+ )?
-// .12
-// 0.12
-// .12e
