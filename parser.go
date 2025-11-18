@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 )
 
@@ -191,22 +190,45 @@ func (p *Parser) implicit() (MathNode, error) {
 		return nil, err
 	}
 
-	for ok := p.canPrimary(); ok; ok = p.canPrimary() {
+	for p.canImplicitMultiply(curr) {
 		right, err := p.primary()
 
 		if err != nil {
 			return nil, err
 		}
 
-		if c, ok := right.(ConstantNode); ok {
-			// return nil, errors.New("cannot have constant node implicit multiplication")
-			return nil, fmt.Errorf("unexpected token: \"%v\"", c.String())
-		}
-
 		curr = OperatorNode{Args: []MathNode{curr, right}, Op: "*"}
 	}
 
 	return curr, nil
+}
+
+// canImplicitMultiply checks if implicit multiplication can occur
+// given the left operand and the next token
+func (p *Parser) canImplicitMultiply(leftNode MathNode) bool {
+	curr, ok := p.peek()
+
+	if !ok {
+		return false
+	}
+
+	// Strings cannot participate in implicit multiplication
+	if curr.Type == String {
+		return false
+	}
+
+	// If left side is a ConstantNode (string), can't do implicit mult
+	if _, ok := leftNode.(ConstantNode); ok {
+		return false
+	}
+
+	// Only these tokens can start an implicit multiplication
+	switch curr.Type {
+	case Ident, Number, OpenParen:
+		return true
+	default:
+		return false
+	}
 }
 
 func (p *Parser) canPrimary() bool {
@@ -386,7 +408,17 @@ func (p *Parser) postfix() (MathNode, error) {
 }
 
 func (p *Parser) Parse() (MathNode, error) {
-	return p.expression()
+	out, err := p.expression()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !p.isAtEnd() {
+		return nil, errors.New("TODO message: unexpected tokens at end")
+	}
+
+	return out, nil
 }
 
 func (p *Parser) expression() (MathNode, error) {

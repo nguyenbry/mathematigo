@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestScannerSource(t *testing.T) {
@@ -715,4 +716,15 @@ func TestIntegerBeforeBinary(t *testing.T) {
 		},
 	}, s.scanTokens())
 
+}
+
+func TestScanScientificNumber(t *testing.T) {
+	s := NewScanner("9e+10")
+
+	require.Equal(t, []Token{
+		{Type: Number,
+			Text: []rune("9e+10"),
+			Line: 0,
+		},
+	}, s.scanTokens())
 }

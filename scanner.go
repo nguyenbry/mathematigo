@@ -334,8 +334,7 @@ func (s *Scanner) scanScientific() (*Scientific, error) {
 				digits = append(digits, next)
 				s.advance()
 			}
-			endIdx := s.current + 1
-			out.num = s.source[startIdx:endIdx]
+			out.num = s.source[startIdx:s.current]
 
 			return out, nil
 		} else if afterE == '-' || afterE == '+' {

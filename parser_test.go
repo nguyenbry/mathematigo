@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -524,10 +525,22 @@ func TestImplicitMultiplicationCannotHappenForConstantNode(t *testing.T) {
 
 	ex, err := p.Parse()
 
+	if !assert.Error(t, err) {
+		fmt.Printf("error was nil, ex was: %+v\n", ex)
+		fmt.Printf("ex type: %T\n", ex)
+		t.FailNow()
+	}
 	require.Error(t, err)
 	require.Nil(t, ex)
 
 	s = NewScanner(`x"abc"`)
+	p = NewParser(s.scanTokens())
+	ex, err = p.Parse()
+
+	require.Error(t, err)
+	require.Nil(t, ex)
+
+	s = NewScanner(`x "abc" * 2`)
 	p = NewParser(s.scanTokens())
 	ex, err = p.Parse()
 
@@ -646,4 +659,16 @@ func TestParseComplexNestedFunction(t *testing.T) {
 		},
 		Op: ">=",
 	}, ex)
+}
+
+func TestParseScientificNumber(t *testing.T) {
+	s := NewScanner("9e+10")
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, FloatNode(9e10), ex)
 }

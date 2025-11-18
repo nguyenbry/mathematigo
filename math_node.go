@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
 
 type MathNode interface {
 	String() string
+	ForEach(func(MathNode))
 }
 
 type SymbolNode struct {
@@ -22,11 +24,23 @@ func (s SymbolNode) String() string {
 	return s.Name
 }
 
+func (s SymbolNode) ForEach(cb func(MathNode)) {
+	cb(s)
+}
+
 var _ MathNode = SymbolNode{}
 
 type FunctionNode struct {
 	Fn   SymbolNode
 	Args []MathNode
+}
+
+func (f FunctionNode) ForEach(cb func(MathNode)) {
+	cb(f)
+
+	for _, arg := range f.Args {
+		arg.ForEach(cb) // recursively traverse children
+	}
 }
 
 func (f FunctionNode) String() string {
@@ -53,6 +67,11 @@ func (p ParenthesisNode) String() string {
 	return fmt.Sprintf("(%s)", p.Content.String())
 }
 
+func (p ParenthesisNode) ForEach(cb func(MathNode)) {
+	cb(p)
+	p.Content.ForEach(cb) // recursively traverse content
+}
+
 var _ MathNode = ParenthesisNode{}
 
 type OperatorNode struct {
@@ -62,6 +81,14 @@ type OperatorNode struct {
 
 func (o OperatorNode) String() string {
 	panic("todo String() OperatorNode")
+}
+
+func (o OperatorNode) ForEach(cb func(MathNode)) {
+	cb(o)
+
+	for _, arg := range o.Args {
+		arg.ForEach(cb) // recursively traverse children
+	}
 }
 
 var _ MathNode = OperatorNode{}
@@ -80,12 +107,24 @@ func (b BlockNode) String() string {
 	return strings.Join(parts, "\n")
 }
 
+func (b BlockNode) ForEach(cb func(MathNode)) {
+	cb(b)
+
+	for _, block := range b.Blocks {
+		block.ForEach(cb) // recursively traverse children
+	}
+}
+
 var _ MathNode = BlockNode{}
 
 type BooleanNode bool
 
 func (b BooleanNode) String() string {
 	return strconv.FormatBool(bool(b))
+}
+
+func (b BooleanNode) ForEach(cb func(MathNode)) {
+	cb(b)
 }
 
 var _ MathNode = BooleanNode(true)
@@ -96,6 +135,10 @@ func (n NullNode) String() string {
 	return "null"
 }
 
+func (n NullNode) ForEach(cb func(MathNode)) {
+	cb(n)
+}
+
 var _ MathNode = NullNode{}
 
 type FloatNode float64
@@ -104,12 +147,45 @@ func (f FloatNode) String() string {
 	return strconv.FormatFloat(float64(f), 'g', -1, 64)
 }
 
+func (f FloatNode) ForEach(cb func(MathNode)) {
+	cb(f)
+}
+
+// IsInt checks if the FloatNode represents an integer value
+func (f FloatNode) IsInt() bool {
+	val := float64(f)
+	return val == math.Trunc(val)
+}
+
+// AsInt converts the FloatNode to an int64 if it represents an integer
+// Returns the integer value and true if successful, 0 and false otherwise
+func (f FloatNode) AsInt() (int64, bool) {
+	val := float64(f)
+	if val == math.Trunc(val) {
+		return int64(val), true
+	}
+	return 0, false
+}
+
+// ToIntNode converts the FloatNode to an IntNode if it represents an integer
+// Returns the IntNode and true if successful, FloatNode and false otherwise
+func (f FloatNode) ToIntNode() (IntNode, bool) {
+	if intVal, ok := f.AsInt(); ok {
+		return IntNode(intVal), true
+	}
+	return 0, false
+}
+
 var _ MathNode = FloatNode(0)
 
 type IntNode int64
 
 func (i IntNode) String() string {
 	return strconv.FormatInt(int64(i), 10)
+}
+
+func (i IntNode) ForEach(cb func(MathNode)) {
+	cb(i)
 }
 
 var _ MathNode = IntNode(0)
@@ -122,6 +198,10 @@ type ConstantNode string
 
 func (c ConstantNode) String() string {
 	return string(c)
+}
+
+func (c ConstantNode) ForEach(cb func(MathNode)) {
+	cb(c)
 }
 
 var _ MathNode = ConstantNode("")
