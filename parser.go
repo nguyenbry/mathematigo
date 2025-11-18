@@ -22,6 +22,19 @@ func NewParser(tokens []Token) *Parser {
 	}
 }
 
+func Parse(val string) (MathNode, error) {
+	s := NewScanner(val)
+
+	p := NewParser(s.scanTokens())
+
+	ex, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	return ex, nil
+}
+
 func (p *Parser) isAtEnd() bool {
 	return p.current >= len(p.tokens)
 }
