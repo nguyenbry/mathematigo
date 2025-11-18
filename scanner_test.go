@@ -1,7 +1,6 @@
 package mathematigo
 
 import (
-	"fmt"
 	"testing"
 	"unicode"
 
@@ -27,8 +26,7 @@ func TestAssumptionAboutEmoji(t *testing.T) {
 	r := []rune(s)
 
 	for _, x := range r {
-		fmt.Println(unicode.IsGraphic(x))
-
+		require.True(t, unicode.IsGraphic(x))
 	}
 }
 

@@ -53,3 +53,7 @@ func TestFunctionNodeBuilder(t *testing.T) {
 		}},
 	}, b)
 }
+
+func TestConstantNodeString(t *testing.T) {
+	assert.Equal(t, "\"PI\"", ConstantNode("PI").String())
+}

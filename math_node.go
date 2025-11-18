@@ -197,7 +197,7 @@ type functionNodeBuilder struct {
 type ConstantNode string
 
 func (c ConstantNode) String() string {
-	return string(c)
+	return `"` + string(c) + `"`
 }
 
 func (c ConstantNode) ForEach(cb func(MathNode)) {
