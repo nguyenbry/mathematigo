@@ -88,7 +88,7 @@ func (p *parser) or() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnBitOr}
 	}
 
 	return curr, nil
@@ -110,7 +110,7 @@ func (p *parser) and() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnBitAnd}
 	}
 
 	return curr, nil
@@ -132,7 +132,12 @@ func (p *parser) equality() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+		switch next.Type {
+		case BangEq:
+			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnUnequal}
+		case EqEq:
+			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnEqual}
+		}
 	}
 
 	return curr, nil
@@ -154,7 +159,16 @@ func (p *parser) comparison() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+		switch next.Type {
+		case Gt:
+			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnGt}
+		case Gteq:
+			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnGteq}
+		case Lt:
+			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnLt}
+		case Lteq:
+			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnLteq}
+		}
 	}
 
 	return curr, nil
@@ -182,25 +196,31 @@ func (p *parser) term() (MathNode, error) {
 				return nil, err
 			}
 		} else {
-			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+
+			switch next.Type {
+			case Plus:
+				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnAdd}
+			case Minus:
+				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMinus}
+			}
 		}
 	}
 	return curr, nil
 }
 
 func (p *parser) factor() (MathNode, error) {
-	// factor → unary ( ( "/" | "*" ) unary )* ;
+	// factor → power ( ( "/" | "*" | "%" ) power )* ;
 
 	// first time
-	curr, err := p.unary()
+	curr, err := p.power()
 	if err != nil {
 		return nil, err
 	}
 
-	for next, ok := p.peek(); ok && (next.Type == Slash || next.Type == Star); next, ok = p.peek() {
+	for next, ok := p.peek(); ok && (next.Type == Slash || next.Type == Star || next.Type == Mod); next, ok = p.peek() {
 		p.advance()
 
-		right, err := p.unary()
+		right, err := p.power()
 
 		if err != nil {
 			if errors.Is(err, ErrEnd) {
@@ -209,9 +229,43 @@ func (p *parser) factor() (MathNode, error) {
 				return nil, err
 			}
 		} else {
-			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text)}
+			switch next.Type {
+			case Star:
+				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMultiply}
+			case Slash:
+				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnDivide}
+			case Mod:
+				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMod}
+			}
 		}
 	}
+	return curr, nil
+}
+
+func (p *parser) power() (MathNode, error) {
+	// power → unary ( "^" power )?
+
+	curr, err := p.unary()
+	if err != nil {
+		return nil, err
+	}
+
+	if next, ok := p.peek(); ok && next.Type == Caret {
+		p.advance()
+
+		// RIGHT ASSOCIATIVE — recursive descent
+		right, err := p.power()
+		if err != nil {
+			return nil, err
+		}
+
+		curr = OperatorNode{
+			Args: []MathNode{curr, right},
+			Op:   string(next.Text),
+			Fn:   OperatorFnPower,
+		}
+	}
+
 	return curr, nil
 }
 
@@ -229,7 +283,7 @@ func (p *parser) implicit() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{Args: []MathNode{curr, right}, Op: "*"}
+		curr = OperatorNode{Args: []MathNode{curr, right}, Op: "*", Fn: OperatorFnMultiply}
 	}
 
 	return curr, nil
@@ -418,7 +472,7 @@ func (p *parser) unary() (MathNode, error) {
 			return nil, err
 		}
 
-		return OperatorNode{Args: []MathNode{content}, Op: string(next.Text)}, nil
+		return OperatorNode{Args: []MathNode{content}, Op: string(next.Text), Fn: OperatorFnUnaryMinus}, nil
 	} else {
 		return p.postfix()
 	}
@@ -433,7 +487,7 @@ func (p *parser) postfix() (MathNode, error) {
 
 	for next, ok := p.peek(); ok && next.Type == Bang; next, ok = p.peek() {
 		p.advance()
-		e = OperatorNode{Args: []MathNode{e}, Op: "!"}
+		e = OperatorNode{Args: []MathNode{e}, Op: "!", Fn: OperatorFnFactorial}
 	}
 
 	return e, nil

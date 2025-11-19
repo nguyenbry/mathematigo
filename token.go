@@ -26,6 +26,8 @@ const (
 	Comma
 	Pipe
 	Ampersand
+	Mod
+	Caret
 )
 
 var ReservedIdentifiers map[string]struct{} = map[string]struct{}{

@@ -163,6 +163,7 @@ func TestImplicitMult(t *testing.T) {
 			SymbolNode{Name: "a"},
 		},
 		Op: "*",
+		Fn: OperatorFnMultiply,
 	},
 		ex)
 }
@@ -181,10 +182,12 @@ func TestImplicitMult2(t *testing.T) {
 					SymbolNode{Name: "a"},
 				},
 				Op: "*",
+				Fn: OperatorFnMultiply,
 			},
 			FloatNode(float64(2)),
 		},
 		Op: "*",
+		Fn: OperatorFnMultiply,
 	},
 		ex)
 }
@@ -216,6 +219,7 @@ func TestTrailingNewLinesDoesNotProduceBlock(t *testing.T) {
 			SymbolNode{Name: "a"},
 		},
 		Op: "*",
+		Fn: OperatorFnMultiply,
 	},
 		ex)
 }
@@ -234,6 +238,7 @@ func TestLeadingNewLinesProducesBlock(t *testing.T) {
 					SymbolNode{Name: "a"},
 				},
 				Op: "*",
+				Fn: OperatorFnMultiply,
 			},
 		},
 	},
@@ -254,6 +259,7 @@ func TestMultipleBlocksWithFunctionCall(t *testing.T) {
 					SymbolNode{Name: "a"},
 				},
 				Op: "*",
+				Fn: OperatorFnMultiply,
 			},
 			FunctionNode{Fn: SymbolNode{
 				Name: "myFunc",
@@ -279,6 +285,7 @@ func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
 					SymbolNode{Name: "a"},
 				},
 				Op: "*",
+				Fn: OperatorFnMultiply,
 			},
 			OperatorNode{
 				Args: []MathNode{
@@ -290,6 +297,7 @@ func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
 					FloatNode(float64(2)),
 				},
 				Op: "*",
+				Fn: OperatorFnMultiply,
 			},
 		},
 	},
@@ -314,6 +322,7 @@ func TestFactorial(t *testing.T) {
 			SymbolNode{Name: "a"},
 		},
 		Op: "!",
+		Fn: OperatorFnFactorial,
 	}, ex)
 }
 
@@ -330,9 +339,11 @@ func TestFactorialAndUnaryMinusPrecedence(t *testing.T) {
 					SymbolNode{Name: "a"},
 				},
 				Op: "!",
+				Fn: OperatorFnFactorial,
 			},
 		},
 		Op: "-",
+		Fn: OperatorFnUnaryMinus,
 	}, ex)
 }
 
@@ -369,9 +380,11 @@ func TestParseAmpersandBindsTighterThanPipe(t *testing.T) {
 					SymbolNode{Name: "c"},
 				},
 				Op: "&",
+				Fn: OperatorFnBitAnd,
 			},
 		},
 		Op: "|",
+		Fn: OperatorFnBitOr,
 	}, ex)
 
 	ex, err = Parse("a & b | c")
@@ -387,10 +400,12 @@ func TestParseAmpersandBindsTighterThanPipe(t *testing.T) {
 					SymbolNode{Name: "b"},
 				},
 				Op: "&",
+				Fn: OperatorFnBitAnd,
 			},
 			SymbolNode{Name: "c"},
 		},
 		Op: "|",
+		Fn: OperatorFnBitOr,
 	}, ex)
 }
 
@@ -407,6 +422,7 @@ func TestParsePipe(t *testing.T) {
 				ConstantNode("y"),
 			},
 			Op: "|",
+			Fn: OperatorFnBitOr,
 		},
 	}, ex)
 
@@ -426,10 +442,12 @@ func TestParseDoubleEqualsTighterThanAmpersand(t *testing.T) {
 					SymbolNode{Name: "b"},
 				},
 				Op: "==",
+				Fn: OperatorFnEqual,
 			},
 			SymbolNode{Name: "c"},
 		},
 		Op: "&",
+		Fn: OperatorFnBitAnd,
 	}, ex)
 
 	ex, err = Parse("a & b == c")
@@ -446,9 +464,11 @@ func TestParseDoubleEqualsTighterThanAmpersand(t *testing.T) {
 					SymbolNode{Name: "c"},
 				},
 				Op: "==",
+				Fn: OperatorFnEqual,
 			},
 		},
 		Op: "&",
+		Fn: OperatorFnBitAnd,
 	}, ex)
 }
 
@@ -501,6 +521,7 @@ func TestParseImplicitMult(t *testing.T) {
 						FloatNode(2),
 					},
 					Op: "+",
+					Fn: OperatorFnAdd,
 				},
 			},
 			ParenthesisNode{
@@ -510,10 +531,12 @@ func TestParseImplicitMult(t *testing.T) {
 						FloatNode(4),
 					},
 					Op: "+",
+					Fn: OperatorFnAdd,
 				},
 			},
 		},
 		Op: "*",
+		Fn: OperatorFnMultiply,
 	}, ex)
 }
 
@@ -536,6 +559,7 @@ func TestParseComplexFunction(t *testing.T) {
 			FloatNode(1),
 		},
 		Op: ">=",
+		Fn: OperatorFnGteq,
 	}, ex)
 }
 
@@ -570,6 +594,7 @@ func TestParseComplexNestedFunction(t *testing.T) {
 			FloatNode(1),
 		},
 		Op: ">=",
+		Fn: OperatorFnGteq,
 	}, ex)
 }
 
@@ -593,9 +618,34 @@ func TestParseBang(t *testing.T) {
 			SymbolNode{Name: "a"},
 		},
 		Op: "!",
+		Fn: OperatorFnFactorial,
 	}, ex)
 
 	ex, err = Parse("!a")
 	require.Error(t, err)
 	require.Nil(t, ex)
+}
+
+func TestParsePowerOperator(t *testing.T) {
+	ex, err := Parse("a ^ b ^ c")
+
+	require.NoError(t, err)
+
+	aRaisedTo := OperatorNode{
+		Args: []MathNode{
+			SymbolNode{Name: "b"},
+			SymbolNode{Name: "c"},
+		},
+		Op: "^",
+		Fn: OperatorFnPower,
+	}
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			SymbolNode{Name: "a"},
+			aRaisedTo,
+		},
+		Op: "^",
+		Fn: OperatorFnPower,
+	}, ex)
 }

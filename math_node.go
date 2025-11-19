@@ -7,6 +7,27 @@ import (
 	"strings"
 )
 
+type operatorFnName string
+
+const (
+	OperatorFnBitOr      operatorFnName = "bitOr"
+	OperatorFnBitAnd     operatorFnName = "bitAnd"
+	OperatorFnAdd        operatorFnName = "add"
+	OperatorFnMinus      operatorFnName = "minus"
+	OperatorFnMultiply   operatorFnName = "multiply"
+	OperatorFnDivide     operatorFnName = "divide"
+	OperatorFnUnequal    operatorFnName = "unequal"
+	OperatorFnEqual      operatorFnName = "equal"
+	OperatorFnGt         operatorFnName = "larger"
+	OperatorFnGteq       operatorFnName = "largerEq"
+	OperatorFnLt         operatorFnName = "smaller"
+	OperatorFnLteq       operatorFnName = "smallerEq"
+	OperatorFnFactorial  operatorFnName = "factorial"
+	OperatorFnUnaryMinus operatorFnName = "unaryMinus"
+	OperatorFnMod        operatorFnName = "mod"
+	OperatorFnPower      operatorFnName = "pow"
+)
+
 type MathNode interface {
 	String() string
 	ForEach(func(MathNode))
@@ -77,6 +98,7 @@ var _ MathNode = ParenthesisNode{}
 type OperatorNode struct {
 	Args []MathNode
 	Op   string
+	Fn   operatorFnName
 }
 
 func (o OperatorNode) String() string {

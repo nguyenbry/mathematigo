@@ -141,6 +141,12 @@ func (s *Scanner) scanToken() error {
 	case '|':
 		s.addToken(NewToken(Pipe, s.source[s.start:s.current], s.line, nil))
 		return nil
+	case '%':
+		s.addToken(NewToken(Mod, s.source[s.start:s.current], s.line, nil))
+		return nil
+	case '^':
+		s.addToken(NewToken(Caret, s.source[s.start:s.current], s.line, nil))
+		return nil
 	case '&':
 		s.addToken(NewToken(Ampersand, s.source[s.start:s.current], s.line, nil))
 		return nil
