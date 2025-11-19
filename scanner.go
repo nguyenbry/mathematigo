@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+var ErrEndStringExpected = errors.New("end of string expected")
 var ErrInvalidSyntax = errors.New("invalid syntax")
 
 type Scanner struct {
@@ -63,7 +64,7 @@ func (s *Scanner) peekMany(num int) ([]rune, bool) {
 	return s.source[s.current : s.current+num], true
 }
 
-func (s *Scanner) string(opener rune) []rune {
+func (s *Scanner) string(opener rune) ([]rune, error) {
 	for next, isNotEnd := s.peek(); next != opener && isNotEnd; next, isNotEnd = s.peek() {
 		if next == opener {
 			// closer found
@@ -77,7 +78,8 @@ func (s *Scanner) string(opener rune) []rune {
 	}
 
 	if s.isAtEnd() {
-		panic("unterminated")
+
+		return nil, fmt.Errorf("%w: (char %d)", ErrEndStringExpected, s.current+1)
 	}
 
 	// the closer is at closerIdx, so we can slice using
@@ -89,7 +91,7 @@ func (s *Scanner) string(opener rune) []rune {
 
 	afterOpenerIdx := s.start + 1
 
-	return s.source[afterOpenerIdx:closerIdx]
+	return s.source[afterOpenerIdx:closerIdx], nil
 
 }
 
@@ -182,7 +184,10 @@ func (s *Scanner) scanToken() error {
 
 		return nil
 	case '\'', '"':
-		val := s.string(r)
+		val, err := s.string(r)
+		if err != nil {
+			return err
+		}
 		s.addToken(NewToken(String, s.source[s.start:s.current], s.line, val))
 
 		return nil
@@ -417,13 +422,16 @@ func (s *Scanner) advanceTilEndOfNumberBinary() {
 	}
 }
 
-func (s *Scanner) scanTokens() []Token {
+func (s *Scanner) scanTokens() ([]Token, error) {
 	for !s.isAtEnd() {
 		s.start = s.current
-		s.scanToken()
+		err := s.scanToken()
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return s.tokens
+	return s.tokens, nil
 }
 
 func (s *Scanner) addToken(tok Token) {

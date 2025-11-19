@@ -45,6 +45,10 @@ func TestSingleScanToken(t *testing.T) {
 func TestScanAllTokensSimple(t *testing.T) {
 	s := NewScanner(")+")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: CloseParen,
@@ -56,14 +60,19 @@ func TestScanAllTokensSimple(t *testing.T) {
 			Text: []rune("+"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestScanTokensTwiceDoesNothing(t *testing.T) {
 	s := NewScanner(")+")
 
-	resA := s.scanTokens()
-	resB := s.scanTokens()
+	resA, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, resA)
+
+	resB, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, resB)
 
 	assert.Equal(t, []Token{
 		{
@@ -84,6 +93,10 @@ func TestScanTokensTwiceDoesNothing(t *testing.T) {
 func TestScanBangEq(t *testing.T) {
 	s := NewScanner("!!=")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Bang,
@@ -95,11 +108,15 @@ func TestScanBangEq(t *testing.T) {
 			Text: []rune("!="),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestLongerScanTokens(t *testing.T) {
 	s := NewScanner("!!=)()<<=<>")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -147,11 +164,15 @@ func TestLongerScanTokens(t *testing.T) {
 			Text: []rune(">"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestWhitespaceLineNumDoesntIncrement(t *testing.T) {
 	s := NewScanner(".  !\t")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -164,13 +185,17 @@ func TestWhitespaceLineNumDoesntIncrement(t *testing.T) {
 			Text: []rune("!"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 
 	assert.Equal(t, 0, s.line)
 }
 
 func TestWhitespaceLineNumIncrements(t *testing.T) {
 	s := NewScanner(".  !\n")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -186,13 +211,17 @@ func TestWhitespaceLineNumIncrements(t *testing.T) {
 		{
 			Type: NewLine,
 		},
-	}, s.scanTokens())
+	}, tokens)
 
 	assert.Equal(t, 1, s.line)
 }
 
 func TestTokenAfterWhitespaceHasCorrectLineNum(t *testing.T) {
 	s := NewScanner(".  !\n.  <")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -218,13 +247,17 @@ func TestTokenAfterWhitespaceHasCorrectLineNum(t *testing.T) {
 			Text: []rune("<"),
 			Line: 1,
 		},
-	}, s.scanTokens())
+	}, tokens)
 
 	assert.Equal(t, 1, s.line)
 }
 
 func TestStringToken(t *testing.T) {
 	s := NewScanner("!\"hey\"")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -238,7 +271,7 @@ func TestStringToken(t *testing.T) {
 			Line:    0,
 			Literal: []rune("hey"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestIsASCIIDigit(t *testing.T) {
@@ -252,17 +285,25 @@ func TestIsASCIIDigit(t *testing.T) {
 func TestNumberStartsWithDot(t *testing.T) {
 	s := NewScanner(" .1234 ")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
 			Text: []rune(".1234"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestNumberBangNumber(t *testing.T) {
 	s := NewScanner("1!1")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -280,11 +321,15 @@ func TestNumberBangNumber(t *testing.T) {
 			Text: []rune("1"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestScientificNumberLookalike(t *testing.T) {
 	s := NewScanner("9e ")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -296,42 +341,57 @@ func TestScientificNumberLookalike(t *testing.T) {
 			Type: Ident,
 			Text: []rune("e"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestScientifics(t *testing.T) {
+	tokens, err := NewScanner("9e1 ").scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
 			Text: []rune("9e1"),
 			Line: 0,
 		},
-	}, NewScanner("9e1 ").scanTokens())
+	}, tokens)
 
+	tokens, err = NewScanner("9e+1 ").scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
 			Text: []rune("9e+1"),
 			Line: 0,
 		},
-	}, NewScanner("9e+1 ").scanTokens())
+	}, tokens)
 
+	tokens, err = NewScanner("9e-1 ").scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
 			Text: []rune("9e-1"),
 			Line: 0,
 		},
-	}, NewScanner("9e-1 ").scanTokens())
+	}, tokens)
 
+	tokens, err = NewScanner("9e-02 ").scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
 			Text: []rune("9e-02"),
 			Line: 0,
 		},
-	}, NewScanner("9e-02 ").scanTokens())
+	}, tokens)
 
+	tokens, err = NewScanner("+ 9e-02+ ").scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 	assert.Equal(t, []Token{
 		{
 			Type: Plus,
@@ -348,10 +408,13 @@ func TestScientifics(t *testing.T) {
 			Text: []rune("+"),
 			Line: 0,
 		},
-	}, NewScanner("+ 9e-02+ ").scanTokens())
+	}, tokens)
 }
 
 func TestScientificNumberWithDotBeforeE(t *testing.T) {
+	tokens, err := NewScanner("+ 92.e-02+ ").scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 	assert.Equal(t, []Token{
 		{
 			Type: Plus,
@@ -368,10 +431,13 @@ func TestScientificNumberWithDotBeforeE(t *testing.T) {
 			Text: []rune("+"),
 			Line: 0,
 		},
-	}, NewScanner("+ 92.e-02+ ").scanTokens())
+	}, tokens)
 }
 
 func TestDecimalScientific(t *testing.T) {
+	tokens, err := NewScanner("+ .92e-02 + ").scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 	assert.Equal(t, []Token{
 		{
 			Type: Plus,
@@ -388,7 +454,7 @@ func TestDecimalScientific(t *testing.T) {
 			Text: []rune("+"),
 			Line: 0,
 		},
-	}, NewScanner("+ .92e-02 + ").scanTokens())
+	}, tokens)
 
 	// assert.Equal(t, []Token{
 	// 	{
@@ -412,17 +478,25 @@ func TestDecimalScientific(t *testing.T) {
 func TestInteger(t *testing.T) {
 	s := NewScanner("73824")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
 			Text: []rune("73824"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestSpaceAfterDotDoesNotResultInNumberToken(t *testing.T) {
 	s := NewScanner(" . 1234 ")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -435,11 +509,15 @@ func TestSpaceAfterDotDoesNotResultInNumberToken(t *testing.T) {
 			Text: []rune("1234"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestDecimal(t *testing.T) {
 	s := NewScanner("73824.2")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -447,11 +525,15 @@ func TestDecimal(t *testing.T) {
 			Text: []rune("73824.2"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestDecimalWithTwoDots(t *testing.T) {
 	s := NewScanner("73824..2")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -464,12 +546,16 @@ func TestDecimalWithTwoDots(t *testing.T) {
 			Text: []rune(".2"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestIntegerWithTwoDots(t *testing.T) {
 	s := NewScanner("1234..")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
@@ -481,12 +567,16 @@ func TestIntegerWithTwoDots(t *testing.T) {
 			Text: []rune("."),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestIntegerWithDotsAndWhitespace(t *testing.T) {
 	s := NewScanner("1234.. .")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
@@ -503,11 +593,15 @@ func TestIntegerWithDotsAndWhitespace(t *testing.T) {
 			Text: []rune("."),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestDecimalWithOtherSymbols(t *testing.T) {
 	s := NewScanner("728.3 < 391 + \n 'hi'")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -540,11 +634,15 @@ func TestDecimalWithOtherSymbols(t *testing.T) {
 			Literal: []rune("hi"),
 			Line:    1,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestStringPreservesSingleOrDoubleQuotes(t *testing.T) {
 	s := NewScanner("'1'")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -553,9 +651,13 @@ func TestStringPreservesSingleOrDoubleQuotes(t *testing.T) {
 			Line:    0,
 			Literal: []rune("1"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 
 	s = NewScanner("\"2\"")
+
+	tokens, err = s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -564,11 +666,15 @@ func TestStringPreservesSingleOrDoubleQuotes(t *testing.T) {
 			Line:    0,
 			Literal: []rune("2"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestIdent(t *testing.T) {
 	s := NewScanner("'1' + 1abc \n")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -596,44 +702,60 @@ func TestIdent(t *testing.T) {
 			Type: NewLine,
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestIdentWithUnderscoreSimple(t *testing.T) {
 	s := NewScanner("_")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
 			Type: Ident,
 			Text: []rune("_"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestIdentWithUnderscoreSimple2(t *testing.T) {
 	s := NewScanner("_928u")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Ident,
 			Text: []rune("_928u"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestIdentWithUnderscoreAndWhitespace(t *testing.T) {
 	s := NewScanner("_928u\t\r")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Ident,
 			Text: []rune("_928u"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestMultipleNewLinesHaveCorrectLineNum(t *testing.T) {
 	s := NewScanner("_928u\n\n\t\r\n. ")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
@@ -657,7 +779,7 @@ func TestMultipleNewLinesHaveCorrectLineNum(t *testing.T) {
 			Text: []rune("."),
 			Line: 3,
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestSingleScanTokenBinaryNumberRequiresDigitAfterB(t *testing.T) {
@@ -675,23 +797,31 @@ func TestSingleScanTokenBinaryNumberRequiresDigitAfterB2(t *testing.T) {
 func TestSingleScanTokenBinaryNumberSimple(t *testing.T) {
 	s := NewScanner("0b0")
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
 			Text: []rune("0b0"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestSingleScanTokenBinaryNumberIncludesSpace(t *testing.T) {
 	s := NewScanner("0b0.")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
 			Text: []rune("0b0."),
 		},
-	}, s.scanTokens())
+	}, tokens)
 }
 
 func TestSingleScanTokenBinaryNumberLookalike(t *testing.T) {
@@ -703,6 +833,10 @@ func TestSingleScanTokenBinaryNumberLookalike(t *testing.T) {
 func TestIntegerBeforeBinary(t *testing.T) {
 	s := NewScanner("20b1") // looks like 2(0b1)
 
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
+
 	assert.Equal(t, []Token{
 		{
 			Type: Number,
@@ -712,17 +846,31 @@ func TestIntegerBeforeBinary(t *testing.T) {
 			Type: Ident,
 			Text: []rune("b1"),
 		},
-	}, s.scanTokens())
+	}, tokens)
 
 }
 
 func TestScanScientificNumber(t *testing.T) {
+	t.Parallel()
 	s := NewScanner("9e+10")
+
+	tokens, err := s.scanTokens()
+	require.NoError(t, err)
+	require.NotNil(t, tokens)
 
 	require.Equal(t, []Token{
 		{Type: Number,
 			Text: []rune("9e+10"),
 			Line: 0,
 		},
-	}, s.scanTokens())
+	}, tokens)
+}
+
+func TestScanUnterminatedStringErrors(t *testing.T) {
+	t.Parallel()
+	s := NewScanner(`"50 < 20`)
+
+	toks, err := s.scanTokens()
+	require.Error(t, err)
+	require.Nil(t, toks)
 }

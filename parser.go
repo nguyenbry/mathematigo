@@ -5,19 +5,19 @@ import (
 	"strconv"
 )
 
-var End = errors.New("end of tokens")
+var ErrEnd = errors.New("end of tokens")
 var ErrTodoUnendedFunction = errors.New("unended function call")
 
-type Parser struct {
+type parser struct {
 	tokens  []Token
 	current int
 }
 
-func NewParser(tokens []Token) *Parser {
+func newParser(tokens []Token) *parser {
 	if tokens == nil {
 		panic("nil tokens")
 	}
-	return &Parser{
+	return &parser{
 		tokens: tokens,
 	}
 }
@@ -25,9 +25,14 @@ func NewParser(tokens []Token) *Parser {
 func Parse(val string) (MathNode, error) {
 	s := NewScanner(val)
 
-	p := NewParser(s.scanTokens())
+	toks, err := s.scanTokens()
+	if err != nil {
+		return nil, err
+	}
 
-	ex, err := p.expression()
+	p := newParser(toks)
+
+	ex, err := p.parse()
 	if err != nil {
 		return nil, err
 	}
@@ -35,11 +40,25 @@ func Parse(val string) (MathNode, error) {
 	return ex, nil
 }
 
-func (p *Parser) isAtEnd() bool {
+func (p *parser) parse() (MathNode, error) {
+	out, err := p.expression()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !p.isAtEnd() {
+		return nil, errors.New("TODO message: unexpected tokens at end")
+	}
+
+	return out, nil
+}
+
+func (p *parser) isAtEnd() bool {
 	return p.current >= len(p.tokens)
 }
 
-func (p *Parser) peek() (Token, bool) {
+func (p *parser) peek() (Token, bool) {
 	if p.isAtEnd() {
 		return Token{}, false
 	}
@@ -47,13 +66,13 @@ func (p *Parser) peek() (Token, bool) {
 	return p.tokens[p.current], true
 }
 
-func (p *Parser) advance() Token {
+func (p *parser) advance() Token {
 	out := p.tokens[p.current]
 	p.current++
 	return out
 }
 
-func (p *Parser) or() (MathNode, error) {
+func (p *parser) or() (MathNode, error) {
 	// or → and ( "|" and )* ;
 
 	curr, err := p.and()
@@ -75,7 +94,7 @@ func (p *Parser) or() (MathNode, error) {
 	return curr, nil
 }
 
-func (p *Parser) and() (MathNode, error) {
+func (p *parser) and() (MathNode, error) {
 	// bitwiseAnd → comparison ( "&" comparison )* ;
 
 	curr, err := p.equality()
@@ -97,7 +116,7 @@ func (p *Parser) and() (MathNode, error) {
 	return curr, nil
 }
 
-func (p *Parser) equality() (MathNode, error) {
+func (p *parser) equality() (MathNode, error) {
 	// equality → comparison ( ( "!=" | "==" ) comparison )* ;
 
 	curr, err := p.comparison()
@@ -119,7 +138,7 @@ func (p *Parser) equality() (MathNode, error) {
 	return curr, nil
 }
 
-func (p *Parser) comparison() (MathNode, error) {
+func (p *parser) comparison() (MathNode, error) {
 	// comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 
 	curr, err := p.term()
@@ -141,7 +160,7 @@ func (p *Parser) comparison() (MathNode, error) {
 	return curr, nil
 }
 
-func (p *Parser) term() (MathNode, error) {
+func (p *parser) term() (MathNode, error) {
 	// term → factor ( ( "-" | "+" ) factor )* ;
 
 	// first time
@@ -157,7 +176,7 @@ func (p *Parser) term() (MathNode, error) {
 		right, err := p.factor()
 
 		if err != nil {
-			if errors.Is(err, End) {
+			if errors.Is(err, ErrEnd) {
 				return nil, errors.New("TODO message: unended binary")
 			} else {
 				return nil, err
@@ -169,7 +188,7 @@ func (p *Parser) term() (MathNode, error) {
 	return curr, nil
 }
 
-func (p *Parser) factor() (MathNode, error) {
+func (p *parser) factor() (MathNode, error) {
 	// factor → unary ( ( "/" | "*" ) unary )* ;
 
 	// first time
@@ -184,7 +203,7 @@ func (p *Parser) factor() (MathNode, error) {
 		right, err := p.unary()
 
 		if err != nil {
-			if errors.Is(err, End) {
+			if errors.Is(err, ErrEnd) {
 				return nil, errors.New("TODO message: unended binary")
 			} else {
 				return nil, err
@@ -196,7 +215,7 @@ func (p *Parser) factor() (MathNode, error) {
 	return curr, nil
 }
 
-func (p *Parser) implicit() (MathNode, error) {
+func (p *parser) implicit() (MathNode, error) {
 	curr, err := p.primary()
 
 	if err != nil {
@@ -218,7 +237,7 @@ func (p *Parser) implicit() (MathNode, error) {
 
 // canImplicitMultiply checks if implicit multiplication can occur
 // given the left operand and the next token
-func (p *Parser) canImplicitMultiply(leftNode MathNode) bool {
+func (p *parser) canImplicitMultiply(leftNode MathNode) bool {
 	curr, ok := p.peek()
 
 	if !ok {
@@ -244,7 +263,7 @@ func (p *Parser) canImplicitMultiply(leftNode MathNode) bool {
 	}
 }
 
-func (p *Parser) canPrimary() bool {
+func (p *parser) canPrimary() bool {
 	curr, ok := p.peek()
 
 	if !ok {
@@ -266,11 +285,11 @@ func (p *Parser) canPrimary() bool {
 	}
 }
 
-func (p *Parser) primary() (MathNode, error) {
+func (p *parser) primary() (MathNode, error) {
 	curr, ok := p.peek()
 
 	if !ok {
-		return nil, End
+		return nil, ErrEnd
 	}
 
 	switch curr.Type {
@@ -389,7 +408,7 @@ func (p *Parser) primary() (MathNode, error) {
 	}
 }
 
-func (p *Parser) unary() (MathNode, error) {
+func (p *parser) unary() (MathNode, error) {
 	if next, ok := p.peek(); ok && next.Type == Minus {
 		p.advance()
 
@@ -405,7 +424,7 @@ func (p *Parser) unary() (MathNode, error) {
 	}
 }
 
-func (p *Parser) postfix() (MathNode, error) {
+func (p *parser) postfix() (MathNode, error) {
 	e, err := p.implicit()
 
 	if err != nil {
@@ -420,26 +439,12 @@ func (p *Parser) postfix() (MathNode, error) {
 	return e, nil
 }
 
-func (p *Parser) Parse() (MathNode, error) {
-	out, err := p.expression()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !p.isAtEnd() {
-		return nil, errors.New("TODO message: unexpected tokens at end")
-	}
-
-	return out, nil
-}
-
-func (p *Parser) expression() (MathNode, error) {
+func (p *parser) expression() (MathNode, error) {
 	// expression → NEWLINE* block (NEWLINE+ block)* NEWLINE*
 	next, ok := p.peek()
 
 	if !ok {
-		return nil, End
+		return nil, ErrEnd
 	}
 
 	isLeading := next.Type == NewLine
@@ -525,6 +530,6 @@ func (p *Parser) expression() (MathNode, error) {
 	}
 }
 
-func (p *Parser) block() (MathNode, error) {
+func (p *parser) block() (MathNode, error) {
 	return p.or()
 }

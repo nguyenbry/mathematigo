@@ -11,9 +11,10 @@ import (
 func TestPrimaryFalse(t *testing.T) {
 	s := NewScanner(" false")
 
-	toks := s.scanTokens()
+	toks, err := s.scanTokens()
+	require.NoError(t, err)
 
-	p := NewParser(toks)
+	p := newParser(toks)
 
 	ex, err := p.primary()
 
@@ -26,9 +27,10 @@ func TestPrimaryFalse(t *testing.T) {
 func TestPrimaryConsumes(t *testing.T) {
 	s := NewScanner(" false")
 
-	toks := s.scanTokens()
+	toks, err := s.scanTokens()
+	require.NoError(t, err)
 
-	p := NewParser(toks)
+	p := newParser(toks)
 
 	ex, err := p.primary()
 
@@ -41,9 +43,10 @@ func TestPrimaryConsumes(t *testing.T) {
 func TestMultiplePrimaryCalls(t *testing.T) {
 	s := NewScanner(" false true null\n")
 
-	toks := s.scanTokens()
+	toks, err := s.scanTokens()
+	require.NoError(t, err)
 
-	p := NewParser(toks)
+	p := newParser(toks)
 
 	ex, err := p.primary()
 	assert.Nil(t, err)
@@ -64,9 +67,10 @@ func TestMultiplePrimaryCalls(t *testing.T) {
 func TestExpression(t *testing.T) {
 	s := NewScanner(" false")
 
-	toks := s.scanTokens()
+	toks, err := s.scanTokens()
+	require.NoError(t, err)
 
-	p := NewParser(toks)
+	p := newParser(toks)
 
 	ex, err := p.expression()
 
@@ -79,9 +83,10 @@ func TestExpression(t *testing.T) {
 func TestGrouping(t *testing.T) {
 	s := NewScanner("(false)")
 
-	toks := s.scanTokens()
+	toks, err := s.scanTokens()
+	require.NoError(t, err)
 
-	p := NewParser(toks)
+	p := newParser(toks)
 
 	ex, err := p.expression()
 
@@ -94,9 +99,10 @@ func TestGrouping(t *testing.T) {
 func TestGroupingErrors(t *testing.T) {
 	s := NewScanner("(false")
 
-	toks := s.scanTokens()
+	toks, err := s.scanTokens()
+	require.NoError(t, err)
 
-	p := NewParser(toks)
+	p := newParser(toks)
 
 	ex, err := p.expression()
 
@@ -118,13 +124,9 @@ func TestGroupingErrors(t *testing.T) {
 // }
 
 func TestParseNoArgsFunction(t *testing.T) {
-	s := NewScanner("myFunc()")
+	ex, err := Parse("myFunc()")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, FunctionNode{
@@ -136,13 +138,9 @@ func TestParseNoArgsFunction(t *testing.T) {
 }
 
 func TestParseFunction1Arg(t *testing.T) {
-	s := NewScanner("myFunc(2)")
+	ex, err := Parse("myFunc(2)")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, FunctionNode{
@@ -154,13 +152,9 @@ func TestParseFunction1Arg(t *testing.T) {
 }
 
 func TestImplicitMult(t *testing.T) {
-	s := NewScanner("2 a")
+	ex, err := Parse("2 a")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, OperatorNode{
@@ -174,13 +168,9 @@ func TestImplicitMult(t *testing.T) {
 }
 
 func TestImplicitMult2(t *testing.T) {
-	s := NewScanner("1a 2")
+	ex, err := Parse("1a 2")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, OperatorNode{
@@ -200,13 +190,9 @@ func TestImplicitMult2(t *testing.T) {
 }
 
 func TestBlockSimple(t *testing.T) {
-	s := NewScanner("2 \n a")
+	ex, err := Parse("2 \n a")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, BlockNode{
@@ -219,13 +205,9 @@ func TestBlockSimple(t *testing.T) {
 }
 
 func TestTrailingNewLinesDoesNotProduceBlock(t *testing.T) {
-	s := NewScanner("2 a \n\n\n")
+	ex, err := Parse("2 a \n\n\n")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, OperatorNode{
@@ -239,13 +221,9 @@ func TestTrailingNewLinesDoesNotProduceBlock(t *testing.T) {
 }
 
 func TestLeadingNewLinesProducesBlock(t *testing.T) {
-	s := NewScanner("\n2 a")
+	ex, err := Parse("\n2 a")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, BlockNode{
@@ -263,13 +241,9 @@ func TestLeadingNewLinesProducesBlock(t *testing.T) {
 }
 
 func TestMultipleBlocksWithFunctionCall(t *testing.T) {
-	s := NewScanner("\n2 a\nmyFunc(2)")
+	ex, err := Parse("\n2 a\nmyFunc(2)")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, BlockNode{
@@ -292,13 +266,9 @@ func TestMultipleBlocksWithFunctionCall(t *testing.T) {
 }
 
 func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
-	s := NewScanner("\n2 a\nmyFunc(2) * 2")
+	ex, err := Parse("\n2 a\nmyFunc(2) * 2")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, BlockNode{
@@ -327,24 +297,16 @@ func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
 }
 
 func TestNewLineInFunctionArgs(t *testing.T) {
-	s := NewScanner("myFunc(2 \n 3)")
-
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
+	ex, err := Parse("myFunc(2 \n 3)")
 
 	assert.NotNil(t, err)
 	assert.Nil(t, ex)
 }
 
 func TestFactorial(t *testing.T) {
-	s := NewScanner("a!")
+	ex, err := Parse("a!")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, OperatorNode{
@@ -356,13 +318,9 @@ func TestFactorial(t *testing.T) {
 }
 
 func TestFactorialAndUnaryMinusPrecedence(t *testing.T) {
-	s := NewScanner("-a!")
+	ex, err := Parse("-a!")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
 	assert.Equal(t, OperatorNode{
@@ -379,13 +337,9 @@ func TestFactorialAndUnaryMinusPrecedence(t *testing.T) {
 }
 
 func TestParseFunctionMultipleArgs(t *testing.T) {
-	s := NewScanner("myFunc(2, 3, x)")
+	ex, err := Parse("myFunc(2, 3, x)")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, FunctionNode{
@@ -401,13 +355,9 @@ func TestParseFunctionMultipleArgs(t *testing.T) {
 }
 
 func TestParseAmpersandBindsTighterThanPipe(t *testing.T) {
-	s := NewScanner("a | b & c")
+	ex, err := Parse("a | b & c")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, OperatorNode{
@@ -424,13 +374,9 @@ func TestParseAmpersandBindsTighterThanPipe(t *testing.T) {
 		Op: "|",
 	}, ex)
 
-	s = NewScanner("a & b | c")
+	ex, err = Parse("a & b | c")
 
-	p = NewParser(s.scanTokens())
-
-	ex, err = p.expression()
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, OperatorNode{
@@ -449,13 +395,9 @@ func TestParseAmpersandBindsTighterThanPipe(t *testing.T) {
 }
 
 func TestParsePipe(t *testing.T) {
-	s := NewScanner("(\"X\" | \"y\")")
+	ex, err := Parse("(\"X\" | \"y\")")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, ParenthesisNode{
@@ -471,13 +413,9 @@ func TestParsePipe(t *testing.T) {
 }
 
 func TestParseDoubleEqualsTighterThanAmpersand(t *testing.T) {
-	s := NewScanner("a == b & c")
+	ex, err := Parse("a == b & c")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, OperatorNode{
@@ -494,13 +432,9 @@ func TestParseDoubleEqualsTighterThanAmpersand(t *testing.T) {
 		Op: "&",
 	}, ex)
 
-	s = NewScanner("a & b == c")
+	ex, err = Parse("a & b == c")
 
-	p = NewParser(s.scanTokens())
-
-	ex, err = p.expression()
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, OperatorNode{
@@ -519,11 +453,7 @@ func TestParseDoubleEqualsTighterThanAmpersand(t *testing.T) {
 }
 
 func TestImplicitMultiplicationCannotHappenForConstantNode(t *testing.T) {
-	s := NewScanner(`x "abc"`)
-
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.Parse()
+	ex, err := Parse(`x "abc"`)
 
 	if !assert.Error(t, err) {
 		fmt.Printf("error was nil, ex was: %+v\n", ex)
@@ -533,25 +463,17 @@ func TestImplicitMultiplicationCannotHappenForConstantNode(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, ex)
 
-	s = NewScanner(`x"abc"`)
-	p = NewParser(s.scanTokens())
-	ex, err = p.Parse()
+	ex, err = Parse(`x"abc"`)
 
 	require.Error(t, err)
 	require.Nil(t, ex)
 
-	s = NewScanner(`x "abc" * 2`)
-	p = NewParser(s.scanTokens())
-	ex, err = p.Parse()
+	ex, err = Parse(`x "abc" * 2`)
 
 	require.Error(t, err)
 	require.Nil(t, ex)
 
-	s = NewScanner(`x ("abc")`)
-
-	p = NewParser(s.scanTokens())
-
-	ex, err = p.Parse()
+	ex, err = Parse(`x ("abc")`)
 
 	require.NoError(t, err)
 	require.NotNil(t, ex)
@@ -565,13 +487,9 @@ func TestImplicitMultiplicationCannotHappenForConstantNode(t *testing.T) {
 }
 
 func TestParseImplicitMult(t *testing.T) {
-	s := NewScanner("(1+2)(3+4)")
+	ex, err := Parse("(1+2)(3+4)")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.Parse()
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, OperatorNode{
@@ -600,12 +518,9 @@ func TestParseImplicitMult(t *testing.T) {
 }
 
 func TestParseComplexFunction(t *testing.T) {
-	s := NewScanner("pattern_match(\"x\", \"2023-12-23 15:41\", \"2024-02-21 23:59\") >= 1")
+	ex, err := Parse("pattern_match(\"x\", \"2023-12-23 15:41\", \"2024-02-21 23:59\") >= 1")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, OperatorNode{
@@ -625,12 +540,9 @@ func TestParseComplexFunction(t *testing.T) {
 }
 
 func TestParseComplexNestedFunction(t *testing.T) {
-	s := NewScanner("funky(\"y\", concat(\"2023-12-23 \", \"15:41\"), concat(\"2024-02-21 \", \"23:59\")) >= 1")
+	ex, err := Parse("funky(\"y\", concat(\"2023-12-23 \", \"15:41\"), concat(\"2024-02-21 \", \"23:59\")) >= 1")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, OperatorNode{
@@ -662,12 +574,9 @@ func TestParseComplexNestedFunction(t *testing.T) {
 }
 
 func TestParseScientificNumber(t *testing.T) {
-	s := NewScanner("9e+10")
+	ex, err := Parse("9e+10")
 
-	p := NewParser(s.scanTokens())
-
-	ex, err := p.expression()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, ex)
 
 	require.Equal(t, FloatNode(9e10), ex)
