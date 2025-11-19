@@ -80,6 +80,18 @@ type OperatorNode struct {
 }
 
 func (o OperatorNode) String() string {
+	switch len(o.Args) {
+	case 1:
+		switch o.Op {
+		case "!":
+			return fmt.Sprintf("%s%s", o.Args[0].String(), o.Op)
+		default:
+			return fmt.Sprintf("%s%s", o.Op, o.Args[0].String())
+		}
+	case 2:
+		// binary
+		return fmt.Sprintf("%s %s %s", o.Args[0].String(), o.Op, o.Args[1].String())
+	}
 	panic("todo String() OperatorNode")
 }
 

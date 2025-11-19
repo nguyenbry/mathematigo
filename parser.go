@@ -385,12 +385,12 @@ func (p *Parser) primary() (MathNode, error) {
 			return nil, errors.New("Expect ')' after expression.")
 		}
 	default:
-		return nil, errors.New("TODO")
+		return nil, errors.New("unexpected token: " + string(curr.Text))
 	}
 }
 
 func (p *Parser) unary() (MathNode, error) {
-	if next, ok := p.peek(); ok && next.Type == Bang || next.Type == Minus {
+	if next, ok := p.peek(); ok && next.Type == Minus {
 		p.advance()
 
 		content, err := p.unary()

@@ -672,3 +672,21 @@ func TestParseScientificNumber(t *testing.T) {
 
 	require.Equal(t, FloatNode(9e10), ex)
 }
+
+func TestParseBang(t *testing.T) {
+	ex, err := Parse("a!")
+
+	require.Nil(t, err)
+	require.NotNil(t, ex)
+
+	require.Equal(t, OperatorNode{
+		Args: []MathNode{
+			SymbolNode{Name: "a"},
+		},
+		Op: "!",
+	}, ex)
+
+	ex, err = Parse("!a")
+	require.Error(t, err)
+	require.Nil(t, ex)
+}

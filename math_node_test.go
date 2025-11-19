@@ -57,3 +57,65 @@ func TestFunctionNodeBuilder(t *testing.T) {
 func TestConstantNodeString(t *testing.T) {
 	assert.Equal(t, "\"PI\"", ConstantNode("PI").String())
 }
+
+func TestOperatorNodeString(t *testing.T) {
+	op := OperatorNode{
+		Op: "+",
+		Args: []MathNode{
+			FloatNode(1.0),
+			FloatNode(2.0),
+		},
+	}
+
+	assert.Equal(t, "1 + 2", op.String())
+
+	op = OperatorNode{
+		Op: "-",
+		Args: []MathNode{
+			FloatNode(3.0),
+		},
+	}
+
+	assert.Equal(t, "-3", op.String())
+
+	op = OperatorNode{
+		Op: "!",
+		Args: []MathNode{
+			FloatNode(5.0),
+		},
+	}
+
+	assert.Equal(t, "5!", op.String())
+
+	op = OperatorNode{
+		Op: "-",
+		Args: []MathNode{
+			OperatorNode{
+				Op: "+",
+				Args: []MathNode{
+					FloatNode(1.0),
+					FloatNode(2.0),
+				},
+			},
+			FloatNode(4.0),
+		},
+	}
+
+	assert.Equal(t, "1 + 2 - 4", op.String())
+
+	op = OperatorNode{
+		Op: "+",
+		Args: []MathNode{
+			OperatorNode{
+				Op: "-",
+				Args: []MathNode{
+					FloatNode(1.0),
+					FloatNode(2.0),
+				},
+			},
+			FloatNode(4.0),
+		},
+	}
+
+	assert.Equal(t, "1 - 2 + 4", op.String())
+}
