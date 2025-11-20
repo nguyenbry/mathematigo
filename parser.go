@@ -88,7 +88,7 @@ func (p *parser) or() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnBitOr}
+		curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnBitOr}
 	}
 
 	return curr, nil
@@ -110,7 +110,7 @@ func (p *parser) and() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnBitAnd}
+		curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnBitAnd}
 	}
 
 	return curr, nil
@@ -134,9 +134,9 @@ func (p *parser) equality() (MathNode, error) {
 
 		switch next.Type {
 		case BangEq:
-			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnUnequal}
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnUnequal}
 		case EqEq:
-			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnEqual}
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnEqual}
 		}
 	}
 
@@ -161,13 +161,13 @@ func (p *parser) comparison() (MathNode, error) {
 
 		switch next.Type {
 		case Gt:
-			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnGt}
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnGt}
 		case Gteq:
-			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnGteq}
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnGteq}
 		case Lt:
-			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnLt}
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnLt}
 		case Lteq:
-			curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnLteq}
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnLteq}
 		}
 	}
 
@@ -199,9 +199,9 @@ func (p *parser) term() (MathNode, error) {
 
 			switch next.Type {
 			case Plus:
-				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnAdd}
+				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnAdd}
 			case Minus:
-				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMinus}
+				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMinus}
 			}
 		}
 	}
@@ -231,11 +231,11 @@ func (p *parser) factor() (MathNode, error) {
 		} else {
 			switch next.Type {
 			case Star:
-				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMultiply}
+				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMultiply}
 			case Slash:
-				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnDivide}
+				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnDivide}
 			case Mod:
-				curr = OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMod}
+				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMod}
 			}
 		}
 	}
@@ -259,11 +259,7 @@ func (p *parser) power() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{
-			Args: []MathNode{curr, right},
-			Op:   string(next.Text),
-			Fn:   OperatorFnPower,
-		}
+		curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnPower}
 	}
 
 	return curr, nil
@@ -283,7 +279,7 @@ func (p *parser) implicit() (MathNode, error) {
 			return nil, err
 		}
 
-		curr = OperatorNode{Args: []MathNode{curr, right}, Op: "*", Fn: OperatorFnMultiply}
+		curr = &OperatorNode{Args: []MathNode{curr, right}, Op: "*", Fn: OperatorFnMultiply}
 	}
 
 	return curr, nil
@@ -304,7 +300,7 @@ func (p *parser) canImplicitMultiply(leftNode MathNode) bool {
 	}
 
 	// If left side is a ConstantNode (string), can't do implicit mult
-	if _, ok := leftNode.(ConstantNode); ok {
+	if _, ok := leftNode.(*ConstantNode); ok {
 		return false
 	}
 
@@ -313,28 +309,6 @@ func (p *parser) canImplicitMultiply(leftNode MathNode) bool {
 	case Ident, Number, OpenParen:
 		return true
 	default:
-		return false
-	}
-}
-
-func (p *parser) canPrimary() bool {
-	curr, ok := p.peek()
-
-	if !ok {
-		return false
-	}
-
-	switch curr.Type {
-	case Ident:
-		fallthrough
-	case Number:
-		fallthrough
-	case String:
-		fallthrough
-	case OpenParen:
-		return true
-	default:
-		// fmt.Println("canPrimary defaults")
 		return false
 	}
 }
@@ -349,15 +323,7 @@ func (p *parser) primary() (MathNode, error) {
 	switch curr.Type {
 	case Ident:
 		p.advance()
-
-		if curr.Text.equals(False) {
-			return BooleanNode(false), nil
-		} else if curr.Text.equals(True) {
-			return BooleanNode(true), nil
-		} else if curr.Text.equals(SmartRune("null")) {
-			return NullNode{}, nil
-		}
-
+		if curr.Text.equals(False) { b := BooleanNode(false); return &b, nil } else if curr.Text.equals(True) { b := BooleanNode(true); return &b, nil } else if curr.Text.equals(SmartRune("null")) { n := NullNode{}; return &n, nil }
 		// check if function call
 		next, ok := p.peek()
 
@@ -381,7 +347,7 @@ func (p *parser) primary() (MathNode, error) {
 						return nil, err
 					}
 
-					if b, ok := arg.(BlockNode); ok {
+					if b, ok := arg.(*BlockNode); ok {
 						// it is a block
 						if len(b.Blocks) != 1 {
 							// TODO
@@ -417,11 +383,11 @@ func (p *parser) primary() (MathNode, error) {
 
 			} else {
 				// is this right?
-				return SymbolNode{Name: string(curr.Text)}, nil
+				return &SymbolNode{Name: string(curr.Text)}, nil
 			}
 		} else {
 			// at end, return Symbol?
-			return SymbolNode{Name: string(curr.Text)}, nil
+			return &SymbolNode{Name: string(curr.Text)}, nil
 		}
 	case Number:
 		p.advance()
@@ -436,11 +402,11 @@ func (p *parser) primary() (MathNode, error) {
 
 		out := FloatNode(val)
 
-		return out, nil
+		return &out, nil
 	case String:
 		p.advance()
-
-		return ConstantNode(string(curr.Literal)), nil
+		c := ConstantNode(string(curr.Literal))
+		return &c, nil
 	case OpenParen:
 		p.advance()
 
@@ -453,7 +419,7 @@ func (p *parser) primary() (MathNode, error) {
 		if next, ok := p.peek(); ok && next.Type == CloseParen {
 			p.advance()
 
-			return ParenthesisNode{Content: e}, nil
+			return &ParenthesisNode{Content: e}, nil
 		} else {
 			return nil, errors.New("Expect ')' after expression.")
 		}
@@ -472,7 +438,7 @@ func (p *parser) unary() (MathNode, error) {
 			return nil, err
 		}
 
-		return OperatorNode{Args: []MathNode{content}, Op: string(next.Text), Fn: OperatorFnUnaryMinus}, nil
+		return &OperatorNode{Args: []MathNode{content}, Op: string(next.Text), Fn: OperatorFnUnaryMinus}, nil
 	} else {
 		return p.postfix()
 	}
@@ -487,7 +453,7 @@ func (p *parser) postfix() (MathNode, error) {
 
 	for next, ok := p.peek(); ok && next.Type == Bang; next, ok = p.peek() {
 		p.advance()
-		e = OperatorNode{Args: []MathNode{e}, Op: "!", Fn: OperatorFnFactorial}
+		e = &OperatorNode{Args: []MathNode{e}, Op: "!", Fn: OperatorFnFactorial}
 	}
 
 	return e, nil
@@ -510,7 +476,7 @@ func (p *parser) expression() (MathNode, error) {
 			p.advance()
 		}
 
-		b := BlockNode{}
+		b := &BlockNode{}
 
 		part, err := p.block()
 
@@ -550,7 +516,7 @@ func (p *parser) expression() (MathNode, error) {
 			return nil, err
 		}
 
-		b := BlockNode{Blocks: []MathNode{part}}
+		b := &BlockNode{Blocks: []MathNode{part}}
 
 		for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
 			p.advance() // consume new line

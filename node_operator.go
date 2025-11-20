@@ -42,7 +42,7 @@ var operatorFnsMap = map[OperatorFnName]struct{}{
 	OperatorFnPower:      {},
 }
 
-func (o OperatorFnName) Valid() bool {
+func (o OperatorFnName) Valid() bool { // keep value receiver (tiny type)
 	_, ok := operatorFnsMap[o]
 	return ok
 }
@@ -53,7 +53,7 @@ type OperatorNode struct {
 	Fn   OperatorFnName
 }
 
-func (o OperatorNode) String() string {
+func (o *OperatorNode) String() string {
 	switch len(o.Args) {
 	case 1:
 		switch o.Op {
@@ -63,37 +63,36 @@ func (o OperatorNode) String() string {
 			return fmt.Sprintf("%s%s", o.Op, o.Args[0].String())
 		}
 	case 2:
-		// binary
 		return fmt.Sprintf("%s %s %s", o.Args[0].String(), o.Op, o.Args[1].String())
 	}
 	panic("todo String() OperatorNode")
 }
 
-func (o OperatorNode) ForEach(cb func(MathNode)) {
+func (o *OperatorNode) ForEach(cb func(MathNode)) {
 	cb(o)
-
 	for _, arg := range o.Args {
-		arg.ForEach(cb) // recursively traverse children
+		arg.ForEach(cb)
 	}
 }
 
-func (o OperatorNode) Equal(other MathNode) bool {
-	otherOp, ok := other.(OperatorNode)
+func (o *OperatorNode) Equal(other MathNode) bool {
+	otherOp, ok := other.(*OperatorNode)
 	if !ok {
 		return false
 	}
-
 	if o.Op != otherOp.Op || o.Fn != otherOp.Fn || len(o.Args) != len(otherOp.Args) {
 		return false
 	}
-
 	for i := range o.Args {
 		if !o.Args[i].Equal(otherOp.Args[i]) {
 			return false
 		}
 	}
-
 	return true
 }
 
-var _ MathNode = OperatorNode{}
+func NewOperatorNode(op string, fn OperatorFnName, args ...MathNode) *OperatorNode {
+	return &OperatorNode{Op: op, Fn: fn, Args: args}
+}
+
+var _ MathNode = (*OperatorNode)(nil)

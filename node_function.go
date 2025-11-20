@@ -7,7 +7,7 @@ type FunctionNode struct {
 	Args []MathNode
 }
 
-func (f FunctionNode) ForEach(cb func(MathNode)) {
+func (f *FunctionNode) ForEach(cb func(MathNode)) {
 	cb(f)
 
 	for _, arg := range f.Args {
@@ -15,7 +15,7 @@ func (f FunctionNode) ForEach(cb func(MathNode)) {
 	}
 }
 
-func (f FunctionNode) String() string {
+func (f *FunctionNode) String() string {
 	s := fmt.Sprintf("%s(", f.Fn.String())
 
 	for i, node := range f.Args {
@@ -29,13 +29,13 @@ func (f FunctionNode) String() string {
 	return s
 }
 
-func (f FunctionNode) Equal(other MathNode) bool {
-	otherFunc, ok := other.(FunctionNode)
+func (f *FunctionNode) Equal(other MathNode) bool {
+	otherFunc, ok := other.(*FunctionNode)
 	if !ok {
 		return false
 	}
 
-	if !f.Fn.Equal(otherFunc.Fn) {
+	if !f.Fn.Equal(&otherFunc.Fn) {
 		return false
 	}
 
@@ -52,14 +52,14 @@ func (f FunctionNode) Equal(other MathNode) bool {
 	return true
 }
 
-var _ MathNode = FunctionNode{}
+var _ MathNode = (*FunctionNode)(nil)
 
 type functionNodeBuilder struct {
-	fNode FunctionNode
+	fNode *FunctionNode
 }
 
 func newFunctionNodeBuilder() functionNodeBuilder {
-	return functionNodeBuilder{}
+	return functionNodeBuilder{fNode: &FunctionNode{}}
 }
 
 func (b functionNodeBuilder) withArg(arg MathNode) functionNodeBuilder {
@@ -69,10 +69,13 @@ func (b functionNodeBuilder) withArg(arg MathNode) functionNodeBuilder {
 
 func (b functionNodeBuilder) withFn(name string) functionNodeBuilder {
 	b.fNode.Fn.Name = name
-
 	return b
 }
 
-func (b functionNodeBuilder) build() FunctionNode {
+func (b functionNodeBuilder) build() *FunctionNode {
 	return b.fNode
+}
+
+func NewFunctionNode(name string, args ...MathNode) *FunctionNode {
+	return &FunctionNode{Fn: SymbolNode{Name: name}, Args: args}
 }

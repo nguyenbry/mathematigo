@@ -6,7 +6,7 @@ type BlockNode struct {
 	Blocks []MathNode
 }
 
-func (b BlockNode) String() string {
+func (b *BlockNode) String() string {
 	parts := make([]string, 0, len(b.Blocks))
 
 	for _, x := range b.Blocks {
@@ -16,7 +16,7 @@ func (b BlockNode) String() string {
 	return strings.Join(parts, "\n")
 }
 
-func (b BlockNode) ForEach(cb func(MathNode)) {
+func (b *BlockNode) ForEach(cb func(MathNode)) {
 	cb(b)
 
 	for _, block := range b.Blocks {
@@ -24,8 +24,8 @@ func (b BlockNode) ForEach(cb func(MathNode)) {
 	}
 }
 
-func (b BlockNode) Equal(other MathNode) bool {
-	otherBlock, ok := other.(BlockNode)
+func (b *BlockNode) Equal(other MathNode) bool {
+	otherBlock, ok := other.(*BlockNode)
 	if !ok {
 		return false
 	}
@@ -43,4 +43,6 @@ func (b BlockNode) Equal(other MathNode) bool {
 	return true
 }
 
-var _ MathNode = BlockNode{}
+func NewBlockNode(blocks ...MathNode) *BlockNode { return &BlockNode{Blocks: blocks} }
+
+var _ MathNode = (*BlockNode)(nil)

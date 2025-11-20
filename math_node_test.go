@@ -9,7 +9,7 @@ import (
 func TestFunctionNodeBuilder(t *testing.T) {
 	b := newFunctionNodeBuilder().withFn("max").build()
 
-	assert.Equal(t, FunctionNode{
+	assert.Equal(t, &FunctionNode{
 		Fn: SymbolNode{
 			Name: "max",
 		},
@@ -18,7 +18,7 @@ func TestFunctionNodeBuilder(t *testing.T) {
 
 	b = newFunctionNodeBuilder().withFn("").withArg(nil).build()
 
-	assert.Equal(t, FunctionNode{
+	assert.Equal(t, &FunctionNode{
 		Fn: SymbolNode{
 			Name: "",
 		},
@@ -27,11 +27,11 @@ func TestFunctionNodeBuilder(t *testing.T) {
 
 	b = newFunctionNodeBuilder().withFn("min").withArg(newFunctionNodeBuilder().withFn("innerFn").build()).build()
 
-	assert.Equal(t, FunctionNode{
+	assert.Equal(t, &FunctionNode{
 		Fn: SymbolNode{
 			Name: "min",
 		},
-		Args: []MathNode{FunctionNode{
+		Args: []MathNode{&FunctionNode{
 			Fn: SymbolNode{
 				Name: "innerFn",
 			},
@@ -41,11 +41,11 @@ func TestFunctionNodeBuilder(t *testing.T) {
 
 	b = newFunctionNodeBuilder().withFn("min").withArg(newFunctionNodeBuilder().withFn("innerFn").withArg(nil).build()).build()
 
-	assert.Equal(t, FunctionNode{
+	assert.Equal(t, &FunctionNode{
 		Fn: SymbolNode{
 			Name: "min",
 		},
-		Args: []MathNode{FunctionNode{
+		Args: []MathNode{&FunctionNode{
 			Fn: SymbolNode{
 				Name: "innerFn",
 			},
@@ -55,15 +55,15 @@ func TestFunctionNodeBuilder(t *testing.T) {
 }
 
 func TestConstantNodeString(t *testing.T) {
-	assert.Equal(t, "\"PI\"", ConstantNode("PI").String())
+	assert.Equal(t, "\"PI\"", NewConstantNode("PI").String())
 }
 
 func TestOperatorNodeString(t *testing.T) {
 	op := OperatorNode{
 		Op: "+",
 		Args: []MathNode{
-			FloatNode(1.0),
-			FloatNode(2.0),
+			NewFloatNode(1.0),
+			NewFloatNode(2.0),
 		},
 	}
 
@@ -72,7 +72,7 @@ func TestOperatorNodeString(t *testing.T) {
 	op = OperatorNode{
 		Op: "-",
 		Args: []MathNode{
-			FloatNode(3.0),
+			NewFloatNode(3.0),
 		},
 	}
 
@@ -81,7 +81,7 @@ func TestOperatorNodeString(t *testing.T) {
 	op = OperatorNode{
 		Op: "!",
 		Args: []MathNode{
-			FloatNode(5.0),
+			NewFloatNode(5.0),
 		},
 	}
 
@@ -90,14 +90,14 @@ func TestOperatorNodeString(t *testing.T) {
 	op = OperatorNode{
 		Op: "-",
 		Args: []MathNode{
-			OperatorNode{
+			&OperatorNode{
 				Op: "+",
 				Args: []MathNode{
-					FloatNode(1.0),
-					FloatNode(2.0),
+					NewFloatNode(1.0),
+					NewFloatNode(2.0),
 				},
 			},
-			FloatNode(4.0),
+			NewFloatNode(4.0),
 		},
 	}
 
@@ -106,14 +106,14 @@ func TestOperatorNodeString(t *testing.T) {
 	op = OperatorNode{
 		Op: "+",
 		Args: []MathNode{
-			OperatorNode{
+			&OperatorNode{
 				Op: "-",
 				Args: []MathNode{
-					FloatNode(1.0),
-					FloatNode(2.0),
+					NewFloatNode(1.0),
+					NewFloatNode(2.0),
 				},
 			},
-			FloatNode(4.0),
+			NewFloatNode(4.0),
 		},
 	}
 
