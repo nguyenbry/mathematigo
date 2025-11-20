@@ -7,26 +7,50 @@ import (
 	"strings"
 )
 
-type operatorFnName string
+type OperatorFnName string
 
 const (
-	OperatorFnBitOr      operatorFnName = "bitOr"
-	OperatorFnBitAnd     operatorFnName = "bitAnd"
-	OperatorFnAdd        operatorFnName = "add"
-	OperatorFnMinus      operatorFnName = "minus"
-	OperatorFnMultiply   operatorFnName = "multiply"
-	OperatorFnDivide     operatorFnName = "divide"
-	OperatorFnUnequal    operatorFnName = "unequal"
-	OperatorFnEqual      operatorFnName = "equal"
-	OperatorFnGt         operatorFnName = "larger"
-	OperatorFnGteq       operatorFnName = "largerEq"
-	OperatorFnLt         operatorFnName = "smaller"
-	OperatorFnLteq       operatorFnName = "smallerEq"
-	OperatorFnFactorial  operatorFnName = "factorial"
-	OperatorFnUnaryMinus operatorFnName = "unaryMinus"
-	OperatorFnMod        operatorFnName = "mod"
-	OperatorFnPower      operatorFnName = "pow"
+	OperatorFnBitOr      OperatorFnName = "bitOr"
+	OperatorFnBitAnd     OperatorFnName = "bitAnd"
+	OperatorFnAdd        OperatorFnName = "add"
+	OperatorFnMinus      OperatorFnName = "minus"
+	OperatorFnMultiply   OperatorFnName = "multiply"
+	OperatorFnDivide     OperatorFnName = "divide"
+	OperatorFnUnequal    OperatorFnName = "unequal"
+	OperatorFnEqual      OperatorFnName = "equal"
+	OperatorFnGt         OperatorFnName = "larger"
+	OperatorFnGteq       OperatorFnName = "largerEq"
+	OperatorFnLt         OperatorFnName = "smaller"
+	OperatorFnLteq       OperatorFnName = "smallerEq"
+	OperatorFnFactorial  OperatorFnName = "factorial"
+	OperatorFnUnaryMinus OperatorFnName = "unaryMinus"
+	OperatorFnMod        OperatorFnName = "mod"
+	OperatorFnPower      OperatorFnName = "pow"
 )
+
+var operatorFnsMap = map[OperatorFnName]struct{}{
+	OperatorFnBitOr:      {},
+	OperatorFnBitAnd:     {},
+	OperatorFnAdd:        {},
+	OperatorFnMinus:      {},
+	OperatorFnMultiply:   {},
+	OperatorFnDivide:     {},
+	OperatorFnUnequal:    {},
+	OperatorFnEqual:      {},
+	OperatorFnGt:         {},
+	OperatorFnGteq:       {},
+	OperatorFnLt:         {},
+	OperatorFnLteq:       {},
+	OperatorFnFactorial:  {},
+	OperatorFnUnaryMinus: {},
+	OperatorFnMod:        {},
+	OperatorFnPower:      {},
+}
+
+func (o OperatorFnName) Valid() bool {
+	_, ok := operatorFnsMap[o]
+	return ok
+}
 
 type MathNode interface {
 	String() string
@@ -98,7 +122,7 @@ var _ MathNode = ParenthesisNode{}
 type OperatorNode struct {
 	Args []MathNode
 	Op   string
-	Fn   operatorFnName
+	Fn   OperatorFnName
 }
 
 func (o OperatorNode) String() string {
