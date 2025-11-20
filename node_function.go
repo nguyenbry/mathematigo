@@ -9,6 +9,7 @@ type FunctionNode struct {
 
 func (f *FunctionNode) ForEach(cb func(MathNode)) {
 	cb(f)
+	cb(f.Fn)
 
 	for _, arg := range f.Args {
 		arg.ForEach(cb) // recursively traverse children
