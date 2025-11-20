@@ -55,6 +55,7 @@ func (o OperatorFnName) Valid() bool {
 type MathNode interface {
 	String() string
 	ForEach(func(MathNode))
+	Equal(other MathNode) bool
 }
 
 type SymbolNode struct {
@@ -71,6 +72,11 @@ func (s SymbolNode) String() string {
 
 func (s SymbolNode) ForEach(cb func(MathNode)) {
 	cb(s)
+}
+
+func (s SymbolNode) Equal(other MathNode) bool {
+	otherSym, ok := other.(SymbolNode)
+	return ok && s.Name == otherSym.Name
 }
 
 var _ MathNode = SymbolNode{}
@@ -102,6 +108,29 @@ func (f FunctionNode) String() string {
 	return s
 }
 
+func (f FunctionNode) Equal(other MathNode) bool {
+	otherFunc, ok := other.(FunctionNode)
+	if !ok {
+		return false
+	}
+
+	if !f.Fn.Equal(otherFunc.Fn) {
+		return false
+	}
+
+	if len(f.Args) != len(otherFunc.Args) {
+		return false
+	}
+
+	for i := range f.Args {
+		if !f.Args[i].Equal(otherFunc.Args[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 var _ MathNode = FunctionNode{}
 
 type ParenthesisNode struct {
@@ -115,6 +144,15 @@ func (p ParenthesisNode) String() string {
 func (p ParenthesisNode) ForEach(cb func(MathNode)) {
 	cb(p)
 	p.Content.ForEach(cb) // recursively traverse content
+}
+
+func (p ParenthesisNode) Equal(other MathNode) bool {
+	otherPar, ok := other.(ParenthesisNode)
+	if !ok {
+		return false
+	}
+
+	return p.Content.Equal(otherPar.Content)
 }
 
 var _ MathNode = ParenthesisNode{}
@@ -149,6 +187,25 @@ func (o OperatorNode) ForEach(cb func(MathNode)) {
 	}
 }
 
+func (o OperatorNode) Equal(other MathNode) bool {
+	otherOp, ok := other.(OperatorNode)
+	if !ok {
+		return false
+	}
+
+	if o.Op != otherOp.Op || o.Fn != otherOp.Fn || len(o.Args) != len(otherOp.Args) {
+		return false
+	}
+
+	for i := range o.Args {
+		if !o.Args[i].Equal(otherOp.Args[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 var _ MathNode = OperatorNode{}
 
 type BlockNode struct {
@@ -173,6 +230,25 @@ func (b BlockNode) ForEach(cb func(MathNode)) {
 	}
 }
 
+func (b BlockNode) Equal(other MathNode) bool {
+	otherBlock, ok := other.(BlockNode)
+	if !ok {
+		return false
+	}
+
+	if len(b.Blocks) != len(otherBlock.Blocks) {
+		return false
+	}
+
+	for i := range b.Blocks {
+		if !b.Blocks[i].Equal(otherBlock.Blocks[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 var _ MathNode = BlockNode{}
 
 type BooleanNode bool
@@ -183,6 +259,11 @@ func (b BooleanNode) String() string {
 
 func (b BooleanNode) ForEach(cb func(MathNode)) {
 	cb(b)
+}
+
+func (b BooleanNode) Equal(other MathNode) bool {
+	otherBool, ok := other.(BooleanNode)
+	return ok && b == otherBool
 }
 
 var _ MathNode = BooleanNode(true)
@@ -197,6 +278,11 @@ func (n NullNode) ForEach(cb func(MathNode)) {
 	cb(n)
 }
 
+func (n NullNode) Equal(other MathNode) bool {
+	_, ok := other.(NullNode)
+	return ok
+}
+
 var _ MathNode = NullNode{}
 
 type FloatNode float64
@@ -207,6 +293,11 @@ func (f FloatNode) String() string {
 
 func (f FloatNode) ForEach(cb func(MathNode)) {
 	cb(f)
+}
+
+func (f FloatNode) Equal(other MathNode) bool {
+	otherFloat, ok := other.(FloatNode)
+	return ok && f == otherFloat
 }
 
 // IsInt checks if the FloatNode represents an integer value
@@ -246,6 +337,11 @@ func (i IntNode) ForEach(cb func(MathNode)) {
 	cb(i)
 }
 
+func (i IntNode) Equal(other MathNode) bool {
+	otherInt, ok := other.(IntNode)
+	return ok && i == otherInt
+}
+
 var _ MathNode = IntNode(0)
 
 type functionNodeBuilder struct {
@@ -260,6 +356,11 @@ func (c ConstantNode) String() string {
 
 func (c ConstantNode) ForEach(cb func(MathNode)) {
 	cb(c)
+}
+
+func (c ConstantNode) Equal(other MathNode) bool {
+	otherConst, ok := other.(ConstantNode)
+	return ok && c == otherConst
 }
 
 var _ MathNode = ConstantNode("")
