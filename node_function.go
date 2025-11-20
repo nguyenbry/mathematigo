@@ -3,7 +3,7 @@ package mathematigo
 import "fmt"
 
 type FunctionNode struct {
-	Fn   SymbolNode
+	Fn   *SymbolNode
 	Args []MathNode
 }
 
@@ -35,7 +35,7 @@ func (f *FunctionNode) Equal(other MathNode) bool {
 		return false
 	}
 
-	if !f.Fn.Equal(&otherFunc.Fn) {
+	if !f.Fn.Equal(otherFunc.Fn) {
 		return false
 	}
 
@@ -63,12 +63,14 @@ func newFunctionNodeBuilder() functionNodeBuilder {
 }
 
 func (b functionNodeBuilder) withArg(arg MathNode) functionNodeBuilder {
-	b.fNode.Args = append(b.fNode.Args, arg)
+	if arg != nil {
+		b.fNode.Args = append(b.fNode.Args, arg)
+	}
 	return b
 }
 
 func (b functionNodeBuilder) withFn(name string) functionNodeBuilder {
-	b.fNode.Fn.Name = name
+	b.fNode.Fn = NewSymbolNode(name)
 	return b
 }
 
@@ -77,5 +79,5 @@ func (b functionNodeBuilder) build() *FunctionNode {
 }
 
 func NewFunctionNode(name string, args ...MathNode) *FunctionNode {
-	return &FunctionNode{Fn: SymbolNode{Name: name}, Args: args}
+	return &FunctionNode{Fn: NewSymbolNode(name), Args: args}
 }

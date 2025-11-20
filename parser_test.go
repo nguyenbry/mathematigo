@@ -127,7 +127,7 @@ func TestParseNoArgsFunction(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, &FunctionNode{Fn: *NewSymbolNode("myFunc"), Args: nil}, ex)
+	assert.Equal(t, &FunctionNode{Fn: NewSymbolNode("myFunc"), Args: nil}, ex)
 }
 
 func TestParseFunction1Arg(t *testing.T) {
@@ -136,7 +136,7 @@ func TestParseFunction1Arg(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, &FunctionNode{Fn: *NewSymbolNode("myFunc"), Args: []MathNode{NewFloatNode(2)}}, ex)
+	assert.Equal(t, &FunctionNode{Fn: NewSymbolNode("myFunc"), Args: []MathNode{NewFloatNode(2)}}, ex)
 }
 
 func TestImplicitMult(t *testing.T) {
@@ -190,7 +190,7 @@ func TestMultipleBlocksWithFunctionCall(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, &BlockNode{Blocks: []MathNode{&OperatorNode{Args: []MathNode{NewFloatNode(2), NewSymbolNode("a")}, Op: "*", Fn: OperatorFnMultiply}, &FunctionNode{Fn: *NewSymbolNode("myFunc"), Args: []MathNode{NewFloatNode(2)}}}}, ex)
+	assert.Equal(t, &BlockNode{Blocks: []MathNode{&OperatorNode{Args: []MathNode{NewFloatNode(2), NewSymbolNode("a")}, Op: "*", Fn: OperatorFnMultiply}, &FunctionNode{Fn: NewSymbolNode("myFunc"), Args: []MathNode{NewFloatNode(2)}}}}, ex)
 }
 
 func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
@@ -199,7 +199,7 @@ func TestMultipleBlocksWithFunctionCallAndAddition(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, &BlockNode{Blocks: []MathNode{&OperatorNode{Args: []MathNode{NewFloatNode(2), NewSymbolNode("a")}, Op: "*", Fn: OperatorFnMultiply}, &OperatorNode{Args: []MathNode{&FunctionNode{Fn: *NewSymbolNode("myFunc"), Args: []MathNode{NewFloatNode(2)}}, NewFloatNode(2)}, Op: "*", Fn: OperatorFnMultiply}}}, ex)
+	assert.Equal(t, &BlockNode{Blocks: []MathNode{&OperatorNode{Args: []MathNode{NewFloatNode(2), NewSymbolNode("a")}, Op: "*", Fn: OperatorFnMultiply}, &OperatorNode{Args: []MathNode{&FunctionNode{Fn: NewSymbolNode("myFunc"), Args: []MathNode{NewFloatNode(2)}}, NewFloatNode(2)}, Op: "*", Fn: OperatorFnMultiply}}}, ex)
 }
 
 func TestNewLineInFunctionArgs(t *testing.T) {
@@ -233,7 +233,7 @@ func TestParseFunctionMultipleArgs(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ex)
 
-	assert.Equal(t, &FunctionNode{Fn: *NewSymbolNode("myFunc"), Args: []MathNode{NewFloatNode(2), NewFloatNode(3), NewSymbolNode("x")}}, ex)
+	assert.Equal(t, &FunctionNode{Fn: NewSymbolNode("myFunc"), Args: []MathNode{NewFloatNode(2), NewFloatNode(3), NewSymbolNode("x")}}, ex)
 }
 
 func TestParseAmpersandBindsTighterThanPipe(t *testing.T) {
@@ -303,7 +303,7 @@ func TestImplicitMultiplicationCannotHappenForConstantNode(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ex)
 
-	assert.Equal(t, &FunctionNode{Fn: *NewSymbolNode("x"), Args: []MathNode{NewConstantNode("abc")}}, ex)
+	assert.Equal(t, &FunctionNode{Fn: NewSymbolNode("x"), Args: []MathNode{NewConstantNode("abc")}}, ex)
 }
 
 func TestParseImplicitMult(t *testing.T) {
@@ -321,7 +321,7 @@ func TestParseComplexFunction(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ex)
 
-	assert.Equal(t, &OperatorNode{Args: []MathNode{&FunctionNode{Fn: *NewSymbolNode("pattern_match"), Args: []MathNode{NewConstantNode("x"), NewConstantNode("2023-12-23 15:41"), NewConstantNode("2024-02-21 23:59")}}, NewFloatNode(1)}, Op: ">=", Fn: OperatorFnGteq}, ex)
+	assert.Equal(t, &OperatorNode{Args: []MathNode{&FunctionNode{Fn: NewSymbolNode("pattern_match"), Args: []MathNode{NewConstantNode("x"), NewConstantNode("2023-12-23 15:41"), NewConstantNode("2024-02-21 23:59")}}, NewFloatNode(1)}, Op: ">=", Fn: OperatorFnGteq}, ex)
 }
 
 func TestParseComplexNestedFunction(t *testing.T) {
@@ -330,7 +330,7 @@ func TestParseComplexNestedFunction(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ex)
 
-	assert.Equal(t, &OperatorNode{Args: []MathNode{&FunctionNode{Fn: *NewSymbolNode("funky"), Args: []MathNode{NewConstantNode("y"), &FunctionNode{Fn: *NewSymbolNode("concat"), Args: []MathNode{NewConstantNode("2023-12-23 "), NewConstantNode("15:41")}}, &FunctionNode{Fn: *NewSymbolNode("concat"), Args: []MathNode{NewConstantNode("2024-02-21 "), NewConstantNode("23:59")}}}}, NewFloatNode(1)}, Op: ">=", Fn: OperatorFnGteq}, ex)
+	assert.Equal(t, &OperatorNode{Args: []MathNode{&FunctionNode{Fn: NewSymbolNode("funky"), Args: []MathNode{NewConstantNode("y"), &FunctionNode{Fn: NewSymbolNode("concat"), Args: []MathNode{NewConstantNode("2023-12-23 "), NewConstantNode("15:41")}}, &FunctionNode{Fn: NewSymbolNode("concat"), Args: []MathNode{NewConstantNode("2024-02-21 "), NewConstantNode("23:59")}}}}, NewFloatNode(1)}, Op: ">=", Fn: OperatorFnGteq}, ex)
 }
 
 func TestParseScientificNumber(t *testing.T) {
