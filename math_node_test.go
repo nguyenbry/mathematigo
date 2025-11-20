@@ -46,8 +46,7 @@ func TestFunctionNodeBuilder(t *testing.T) {
 	assert.Equal(t, &FunctionNode{
 		Fn: NewSymbolNode("min"),
 		Args: []MathNode{&FunctionNode{
-			Fn:   NewSymbolNode("innerFn"),
-			Args: nil,
+			Fn: NewSymbolNode("innerFn"),
 		}},
 	}, b)
 }
