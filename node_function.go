@@ -23,7 +23,7 @@ func (f *FunctionNode) String() string {
 		if i == len(f.Args)-1 {
 			s += fmt.Sprintf("%s)", node.String())
 		} else {
-			s += fmt.Sprintf("%s,", node.String())
+			s += fmt.Sprintf("%s, ", node.String())
 		}
 	}
 

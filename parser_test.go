@@ -364,3 +364,12 @@ func TestParsePowerOperator(t *testing.T) {
 
 	assert.Equal(t, &OperatorNode{Args: []MathNode{NewSymbolNode("a"), aRaisedTo}, Op: "^", Fn: OperatorFnPower}, ex)
 }
+
+func TestSingleQuoteString(t *testing.T) {
+	ex, err := Parse("'abc'")
+
+	require.NoError(t, err)
+	require.NotNil(t, ex)
+
+	assert.Equal(t, NewConstantNode("abc"), ex)
+}
