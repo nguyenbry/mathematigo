@@ -91,6 +91,17 @@ func (o *OperatorNode) Equal(other MathNode) bool {
 	return true
 }
 
+func (o *OperatorNode) Transform(fn func(MathNode) MathNode) MathNode {
+	res := fn(o)
+	if res != o {
+		return res
+	}
+	for i, arg := range o.Args {
+		o.Args[i] = arg.Transform(fn)
+	}
+	return o
+}
+
 func NewOperatorNode(op string, fn OperatorFnName, args ...MathNode) *OperatorNode {
 	return &OperatorNode{Op: op, Fn: fn, Args: args}
 }

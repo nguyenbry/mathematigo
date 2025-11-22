@@ -20,6 +20,8 @@ func (f *FloatNode) ForEach(cb func(MathNode)) {
 	cb(f)
 }
 
+func (f *FloatNode) Transform(fn func(MathNode) MathNode) MathNode { return fn(f) }
+
 func (f *FloatNode) Equal(other MathNode) bool {
 	otherFloat, ok := other.(*FloatNode)
 	return ok && *f == *otherFloat

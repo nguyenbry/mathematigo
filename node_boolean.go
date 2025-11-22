@@ -22,4 +22,9 @@ func (b *BooleanNode) Equal(other MathNode) bool {
 	return ok && *b == *otherBool
 }
 
+func (b *BooleanNode) Transform(fn func(MathNode) MathNode) MathNode {
+	res := fn(b)
+	return res
+}
+
 var _ MathNode = (*BooleanNode)(nil)

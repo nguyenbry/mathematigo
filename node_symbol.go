@@ -25,4 +25,8 @@ func (s *SymbolNode) Equal(other MathNode) bool {
 	return ok && s.Name == otherSym.Name
 }
 
+func (s *SymbolNode) Transform(fn func(MathNode) MathNode) MathNode {
+	return fn(s)
+}
+
 var _ MathNode = (*SymbolNode)(nil)

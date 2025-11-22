@@ -23,6 +23,15 @@ func (p *ParenthesisNode) Equal(other MathNode) bool {
 	return p.Content.Equal(otherPar.Content)
 }
 
+func (p *ParenthesisNode) Transform(fn func(MathNode) MathNode) MathNode {
+	res := fn(p)
+	if res != p {
+		return res
+	}
+	p.Content = p.Content.Transform(fn)
+	return p
+}
+
 func NewParenthesisNode(content MathNode) *ParenthesisNode { return &ParenthesisNode{Content: content} }
 
 var _ MathNode = (*ParenthesisNode)(nil)

@@ -16,6 +16,24 @@ func (f *FunctionNode) ForEach(cb func(MathNode)) {
 	}
 }
 
+func (f *FunctionNode) Transform(fn func(MathNode) MathNode) MathNode {
+	res := fn(f)
+	if res != f { // transformed into a different node; do not descend
+		return res
+	}
+	// transform fn symbol
+	if f.Fn != nil {
+		newFn := fn(f.Fn)
+		if sym, ok := newFn.(*SymbolNode); ok {
+			f.Fn = sym
+		}
+	}
+	for i, arg := range f.Args {
+		f.Args[i] = arg.Transform(fn)
+	}
+	return f
+}
+
 func (f *FunctionNode) String() string {
 	s := fmt.Sprintf("%s(", f.Fn.String())
 

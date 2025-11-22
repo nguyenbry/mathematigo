@@ -19,4 +19,6 @@ func (i *IntNode) Equal(other MathNode) bool {
 	return ok && *i == *otherInt
 }
 
+func (i *IntNode) Transform(fn func(MathNode) MathNode) MathNode { return fn(i) }
+
 var _ MathNode = (*IntNode)(nil)

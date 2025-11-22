@@ -43,6 +43,17 @@ func (b *BlockNode) Equal(other MathNode) bool {
 	return true
 }
 
+func (b *BlockNode) Transform(fn func(MathNode) MathNode) MathNode {
+	res := fn(b)
+	if res != b {
+		return res
+	}
+	for i, blk := range b.Blocks {
+		b.Blocks[i] = blk.Transform(fn)
+	}
+	return b
+}
+
 func NewBlockNode(blocks ...MathNode) *BlockNode { return &BlockNode{Blocks: blocks} }
 
 var _ MathNode = (*BlockNode)(nil)

@@ -20,4 +20,6 @@ func (c *ConstantNode) Equal(other MathNode) bool {
 	return ok && *c == *otherConst
 }
 
+func (c *ConstantNode) Transform(f func(MathNode) MathNode) MathNode { return f(c) }
+
 var _ MathNode = (*ConstantNode)(nil)
