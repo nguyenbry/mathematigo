@@ -201,7 +201,7 @@ func (p *parser) term() (MathNode, error) {
 			case Plus:
 				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnAdd}
 			case Minus:
-				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMinus}
+				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnSubtract}
 			}
 		}
 	}

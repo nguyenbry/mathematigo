@@ -8,7 +8,7 @@ const (
 	OperatorFnBitOr      OperatorFnName = "bitOr"
 	OperatorFnBitAnd     OperatorFnName = "bitAnd"
 	OperatorFnAdd        OperatorFnName = "add"
-	OperatorFnMinus      OperatorFnName = "minus"
+	OperatorFnSubtract   OperatorFnName = "subtract"
 	OperatorFnMultiply   OperatorFnName = "multiply"
 	OperatorFnDivide     OperatorFnName = "divide"
 	OperatorFnUnequal    OperatorFnName = "unequal"
@@ -27,7 +27,7 @@ var operatorFnsMap = map[OperatorFnName]struct{}{
 	OperatorFnBitOr:      {},
 	OperatorFnBitAnd:     {},
 	OperatorFnAdd:        {},
-	OperatorFnMinus:      {},
+	OperatorFnSubtract:   {},
 	OperatorFnMultiply:   {},
 	OperatorFnDivide:     {},
 	OperatorFnUnequal:    {},
