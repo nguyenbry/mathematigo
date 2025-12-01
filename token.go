@@ -53,8 +53,9 @@ func (s SmartRune) equals(other SmartRune) bool {
 	return true
 }
 
-var False SmartRune = []rune("false")
-var True SmartRune = []rune("true")
+var RuneFalse SmartRune = []rune("false")
+var RuneTrue SmartRune = []rune("true")
+var RuneNull SmartRune = []rune("null")
 
 type Token struct {
 	Type TokenType

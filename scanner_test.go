@@ -874,3 +874,20 @@ func TestScanUnterminatedStringErrors(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, toks)
 }
+
+func TestEmptyExpressionScansNilTokens(t *testing.T) {
+	t.Parallel()
+
+	empties := []string{
+		"",
+		"  ",
+	}
+
+	for _, e := range empties {
+		s := NewScanner(e)
+		toks, err := s.scanTokens()
+
+		require.NoError(t, err)
+		require.Nil(t, toks)
+	}
+}

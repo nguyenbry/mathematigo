@@ -65,14 +65,7 @@ func TestMultiplePrimaryCalls(t *testing.T) {
 }
 
 func TestExpression(t *testing.T) {
-	s := NewScanner(" false")
-
-	toks, err := s.scanTokens()
-	require.NoError(t, err)
-
-	p := newParser(toks)
-
-	ex, err := p.expression()
+	ex, err := Parse(" false")
 
 	assert.Nil(t, err)
 	assert.NotNil(t, ex)
@@ -81,17 +74,9 @@ func TestExpression(t *testing.T) {
 }
 
 func TestGrouping(t *testing.T) {
-	s := NewScanner("(false)")
-
-	toks, err := s.scanTokens()
+	ex, err := Parse("(false)")
 	require.NoError(t, err)
-
-	p := newParser(toks)
-
-	ex, err := p.expression()
-
-	assert.Nil(t, err)
-	assert.Equal(t, &ParenthesisNode{Content: NewBooleanNode(false)}, ex)
+	require.Equal(t, &ParenthesisNode{Content: NewBooleanNode(false)}, ex)
 }
 
 func TestGroupingErrors(t *testing.T) {
@@ -107,19 +92,6 @@ func TestGroupingErrors(t *testing.T) {
 	assert.Nil(t, ex)
 	assert.NotNil(t, err)
 }
-
-// func TestParseEmpty(t *testing.T) {
-// 	s := NewScanner(" ")
-
-// 	toks := s.scanTokens()
-
-// 	p := NewParser(toks)
-
-// 	ex, err := p.expression()
-
-// 	assert.Nil(t, ex)
-// 	assert.NotNil(t, err)
-// }
 
 func TestParseNoArgsFunction(t *testing.T) {
 	ex, err := Parse("myFunc()")
@@ -166,22 +138,44 @@ func TestBlockSimple(t *testing.T) {
 	assert.Equal(t, &BlockNode{Blocks: []MathNode{NewFloatNode(2), NewSymbolNode("a")}}, ex)
 }
 
-func TestTrailingNewLinesDoesNotProduceBlock(t *testing.T) {
+func TestTrailingNewLinesProducesBlockNode(t *testing.T) {
 	ex, err := Parse("2 a \n\n\n")
 
 	require.NoError(t, err)
-	assert.NotNil(t, ex)
+	require.NotNil(t, ex)
 
-	assert.Equal(t, &OperatorNode{Args: []MathNode{NewFloatNode(2), NewSymbolNode("a")}, Op: "*", Fn: OperatorFnMultiply}, ex)
+	require.Equal(t, &BlockNode{
+		Blocks: []MathNode{
+			&OperatorNode{
+				Args: []MathNode{
+					NewFloatNode(2),
+					NewSymbolNode("a"),
+				},
+				Op: "*",
+				Fn: OperatorFnMultiply,
+			},
+		},
+	}, ex)
 }
 
-func TestLeadingNewLinesProducesBlock(t *testing.T) {
+func TestLeadingNewLinesProducesBlockNode(t *testing.T) {
 	ex, err := Parse("\n2 a")
 
 	require.NoError(t, err)
 	assert.NotNil(t, ex)
 
-	assert.Equal(t, &BlockNode{Blocks: []MathNode{&OperatorNode{Args: []MathNode{NewFloatNode(2), NewSymbolNode("a")}, Op: "*", Fn: OperatorFnMultiply}}}, ex)
+	require.Equal(t, &BlockNode{
+		Blocks: []MathNode{
+			&OperatorNode{
+				Args: []MathNode{
+					NewFloatNode(2),
+					NewSymbolNode("a"),
+				},
+				Op: "*",
+				Fn: OperatorFnMultiply,
+			},
+		},
+	}, ex)
 }
 
 func TestMultipleBlocksWithFunctionCall(t *testing.T) {
@@ -372,4 +366,248 @@ func TestSingleQuoteString(t *testing.T) {
 	require.NotNil(t, ex)
 
 	assert.Equal(t, NewConstantNode("abc"), ex)
+}
+
+func TestA(t *testing.T) {
+	ex, err := Parse(`func((4), 1, 2
+)`)
+	require.NoError(t, err)
+	require.NotNil(t, ex)
+
+	assert.Equal(t,
+		&FunctionNode{
+			Fn: NewSymbolNode("func"),
+			Args: []MathNode{
+				&ParenthesisNode{
+					Content: NewFloatNode(4),
+				},
+				NewFloatNode(1),
+				NewFloatNode(2),
+			},
+		},
+		ex)
+}
+
+func TestUnexpectedChar(t *testing.T) {
+	ex, err := Parse(`1 : 2`)
+
+	var se *ScanErr
+	require.ErrorAs(t, err, &se)
+	require.Zero(t, ex)
+	require.Equal(t, "unexpected character: ':' at position 3", err.Error())
+}
+
+func TestX(t *testing.T) {
+	ex, err := Parse("myFunc(2 \n 3)")
+
+	require.ErrorIs(t, err, ErrUnendedFunction)
+	require.Zero(t, ex)
+}
+
+func TestNewLinesAfterBitOr(t *testing.T) {
+	ex, err := Parse(`1|2`)
+
+	require.NoError(t, err)
+	expected := &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+			NewFloatNode(2.0),
+		},
+		Op: "|",
+		Fn: OperatorFnBitOr,
+	}
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1|\n2")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, ex)
+}
+
+func TestNewLinesAfterBitAnd(t *testing.T) {
+	ex, err := Parse(`1 & 2`)
+
+	require.NoError(t, err)
+	expected := &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+			NewFloatNode(2.0),
+		},
+		Op: "&",
+		Fn: OperatorFnBitAnd,
+	}
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1 & \n 2")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, ex)
+}
+
+func TestNewLinesAfterNotEqual(t *testing.T) {
+	ex, err := Parse(`1 != 2`)
+
+	require.NoError(t, err)
+	expected := &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+			NewFloatNode(2.0),
+		},
+		Op: "!=",
+		Fn: OperatorFnUnequal,
+	}
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1 != \n 2")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, ex)
+}
+
+func TestNewLinesAfterComparisons(t *testing.T) {
+	ex, err := Parse(`1 > 2`)
+
+	require.NoError(t, err)
+	expected := &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+			NewFloatNode(2.0),
+		},
+		Op: ">",
+		Fn: OperatorFnGt,
+	}
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1 > \n 2")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse(`1 < 2`)
+
+	require.NoError(t, err)
+	expected = &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+			NewFloatNode(2.0),
+		},
+		Op: "<",
+		Fn: OperatorFnLt,
+	}
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1 < \n 2")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse(`1 >= 2`)
+
+	require.NoError(t, err)
+	expected = &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+			NewFloatNode(2.0),
+		},
+		Op: ">=",
+		Fn: OperatorFnGteq,
+	}
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1 >= \n 2")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse(`1 <= 2`)
+
+	require.NoError(t, err)
+	expected = &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+			NewFloatNode(2.0),
+		},
+		Op: "<=",
+		Fn: OperatorFnLteq,
+	}
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1 <= \n 2")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, ex)
+}
+
+func TestNewLinesAfterUnaryMinus(t *testing.T) {
+	ex, err := Parse("1 + -1")
+
+	require.NoError(t, err)
+	expected := &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+			NewOperatorNode(
+				"-",
+				OperatorFnUnaryMinus,
+				NewFloatNode(1),
+			),
+		},
+		Op: "+",
+		Fn: OperatorFnAdd,
+	}
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1 + -\n1")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, ex)
+}
+
+func TestNewLineAfterFactorialErrors(t *testing.T) {
+	ex, err := Parse("1 !")
+
+	require.NoError(t, err)
+	expected := &OperatorNode{
+		Args: []MathNode{
+			NewFloatNode(1.0),
+		},
+		Op: "!",
+		Fn: OperatorFnFactorial,
+	}
+
+	require.Equal(t, expected, ex)
+
+	ex, err = Parse("1 \n !")
+
+	require.Error(t, err)
+	require.Zero(t, ex)
+}
+
+func TestNewLineInsideString(t *testing.T) {
+	ex, err := Parse("\"a\nbc\"")
+
+	require.NoError(t, err)
+	require.Equal(t, NewConstantNode("a\nbc"), ex)
+}
+
+func TestParseEmpty(t *testing.T) {
+	ex, err := Parse(" ")
+
+	require.ErrorIs(t, err, ErrEmptyExpression)
+	require.Zero(t, ex)
+
+	ex, err = Parse(" \n\n")
+
+	require.ErrorIs(t, err, ErrEmptyExpression)
+	require.Zero(t, ex)
+}
+
+func TestParse_UnendedAdd(t *testing.T) {
+	ex, err := Parse(" 1+ .")
+
+	var pe *ParseErr
+	require.ErrorAs(t, err, &pe)
+	require.Equal(t, ParseErrUnexpected, pe.Type)
+	require.Equal(t, []rune("."), pe.chars)
+	require.Zero(t, ex)
+
 }

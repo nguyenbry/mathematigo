@@ -2,11 +2,53 @@ package mathematigo
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 )
 
 var ErrEnd = errors.New("end of tokens")
-var ErrTodoUnendedFunction = errors.New("unended function call")
+
+type ParseErrType string
+
+const (
+	ParseErrEmpty           ParseErrType = "EMPTY"
+	ParseErrEnd             ParseErrType = "END"
+	ParseErrUnendedFunction ParseErrType = "UNENDED_FUNCTION"
+	ParseErrUnexpected      ParseErrType = "UNEXPECTED"
+)
+
+type ParseErr struct {
+	Type  ParseErrType
+	chars []rune
+}
+
+var _ error = (*ParseErr)(nil)
+
+func (pe *ParseErr) Error() string {
+	switch pe.Type {
+	case ParseErrEmpty:
+		return "expression is empty"
+	case ParseErrEnd:
+		return "unexpected end of expression"
+	case ParseErrUnexpected:
+		return fmt.Sprintf("unexpected token: '%s'", string(pe.chars))
+	default:
+		return ""
+	}
+}
+
+var (
+	ErrEmptyExpression = &ParseErr{Type: ParseErrEmpty}
+	ErrUnexpectedEnd   = &ParseErr{Type: ParseErrEmpty}
+	ErrUnendedFunction = &ParseErr{Type: ParseErrUnendedFunction}
+)
+
+func newUnexpectedTokenErr(chars []rune) *ParseErr {
+	return &ParseErr{
+		Type:  ParseErrUnexpected,
+		chars: chars,
+	}
+}
 
 type parser struct {
 	tokens  []Token
@@ -14,9 +56,6 @@ type parser struct {
 }
 
 func newParser(tokens []Token) *parser {
-	if tokens == nil {
-		panic("nil tokens")
-	}
 	return &parser{
 		tokens: tokens,
 	}
@@ -40,20 +79,6 @@ func Parse(val string) (MathNode, error) {
 	return ex, nil
 }
 
-func (p *parser) parse() (MathNode, error) {
-	out, err := p.expression()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !p.isAtEnd() {
-		return nil, errors.New("TODO message: unexpected tokens at end")
-	}
-
-	return out, nil
-}
-
 func (p *parser) isAtEnd() bool {
 	return p.current >= len(p.tokens)
 }
@@ -72,6 +97,71 @@ func (p *parser) advance() Token {
 	return out
 }
 
+func (p *parser) parse() (MathNode, error) {
+	first, ok := p.peek()
+
+	if !ok {
+		// handles empty expressions
+		return nil, ErrEmptyExpression
+	}
+
+	b, err := p.expression()
+
+	if err != nil {
+		return nil, err
+	}
+
+	// did not finish
+	if !p.isAtEnd() {
+		return nil, ErrUnexpectedEnd
+	}
+
+	switch len(b.Blocks) {
+	case 0:
+		return nil, ErrEmptyExpression
+	case 1:
+		isLeading := first.Type == NewLine
+		isTrailing := p.tokens[p.current-1].Type == NewLine
+		if isLeading || isTrailing {
+			// keep block
+			return b, nil
+		} else {
+			return b.Blocks[0], nil
+		}
+	default:
+		return b, nil
+	}
+}
+
+func (p *parser) expression() (*BlockNode, error) {
+	// expression → NEWLINE* block (NEWLINE+ block)* NEWLINE*
+
+	b := &BlockNode{}
+
+	for !p.isAtEnd() {
+		p.skipNewLines()
+
+		if p.isAtEnd() {
+			break
+		}
+
+		part, err := p.block()
+
+		if err != nil {
+			return nil, err
+		}
+
+		b.Blocks = append(b.Blocks, part)
+	}
+
+	return b, nil
+
+}
+
+func (p *parser) block() (MathNode, error) {
+	return p.or()
+}
+
 func (p *parser) or() (MathNode, error) {
 	// or → and ( "|" and )* ;
 
@@ -82,6 +172,7 @@ func (p *parser) or() (MathNode, error) {
 
 	for next, ok := p.peek(); ok && next.Type == Pipe; next, ok = p.peek() {
 		p.advance() // consume operator
+		p.skipNewLines()
 
 		right, err := p.and()
 		if err != nil {
@@ -104,6 +195,7 @@ func (p *parser) and() (MathNode, error) {
 
 	for next, ok := p.peek(); ok && next.Type == Ampersand; next, ok = p.peek() {
 		p.advance() // consume operator
+		p.skipNewLines()
 
 		right, err := p.equality()
 		if err != nil {
@@ -126,6 +218,7 @@ func (p *parser) equality() (MathNode, error) {
 
 	for next, ok := p.peek(); ok && (next.Type == BangEq || next.Type == EqEq); next, ok = p.peek() {
 		p.advance() // consume operator
+		p.skipNewLines()
 
 		right, err := p.comparison()
 		if err != nil {
@@ -153,6 +246,7 @@ func (p *parser) comparison() (MathNode, error) {
 
 	for next, ok := p.peek(); ok && (next.Type == Gt || next.Type == Gteq || next.Type == Lt || next.Type == Lteq); next, ok = p.peek() {
 		p.advance() // consume operator
+		p.skipNewLines()
 
 		right, err := p.term()
 		if err != nil {
@@ -190,19 +284,14 @@ func (p *parser) term() (MathNode, error) {
 		right, err := p.factor()
 
 		if err != nil {
-			if errors.Is(err, ErrEnd) {
-				return nil, errors.New("TODO message: unended binary")
-			} else {
-				return nil, err
-			}
-		} else {
+			return nil, err
+		}
 
-			switch next.Type {
-			case Plus:
-				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnAdd}
-			case Minus:
-				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnSubtract}
-			}
+		switch next.Type {
+		case Plus:
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnAdd}
+		case Minus:
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnSubtract}
 		}
 	}
 	return curr, nil
@@ -223,20 +312,16 @@ func (p *parser) factor() (MathNode, error) {
 		right, err := p.power()
 
 		if err != nil {
-			if errors.Is(err, ErrEnd) {
-				return nil, errors.New("TODO message: unended binary")
-			} else {
-				return nil, err
-			}
-		} else {
-			switch next.Type {
-			case Star:
-				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMultiply}
-			case Slash:
-				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnDivide}
-			case Mod:
-				curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMod}
-			}
+			return nil, err
+		}
+
+		switch next.Type {
+		case Star:
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMultiply}
+		case Slash:
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnDivide}
+		case Mod:
+			curr = &OperatorNode{Args: []MathNode{curr, right}, Op: string(next.Text), Fn: OperatorFnMod}
 		}
 	}
 	return curr, nil
@@ -272,9 +357,15 @@ func (p *parser) implicit() (MathNode, error) {
 		return nil, err
 	}
 
-	for p.canImplicitMultiply(curr) {
-		right, err := p.primary()
+	for shouldImplicitMultiply, err := p.canImplicitMultiply(curr); ; shouldImplicitMultiply, err = p.canImplicitMultiply(curr) {
+		if err != nil {
+			return nil, err
+		}
+		if !shouldImplicitMultiply {
+			break
+		}
 
+		right, err := p.primary()
 		if err != nil {
 			return nil, err
 		}
@@ -287,29 +378,33 @@ func (p *parser) implicit() (MathNode, error) {
 
 // canImplicitMultiply checks if implicit multiplication can occur
 // given the left operand and the next token
-func (p *parser) canImplicitMultiply(leftNode MathNode) bool {
-	curr, ok := p.peek()
+func (p *parser) canImplicitMultiply(leftNode MathNode) (bool, error) {
+	right, ok := p.peek()
 
 	if !ok {
-		return false
+		return false, nil
+	}
+
+	if right.Type == NewLine {
+		return false, nil
 	}
 
 	// Strings cannot participate in implicit multiplication
-	if curr.Type == String {
-		return false
+	if right.Type == String {
+		return false, errors.New("cannot implicit TODO")
 	}
 
 	// If left side is a ConstantNode (string), can't do implicit mult
 	if _, ok := leftNode.(*ConstantNode); ok {
-		return false
+		return false, nil
 	}
 
 	// Only these tokens can start an implicit multiplication
-	switch curr.Type {
+	switch right.Type {
 	case Ident, Number, OpenParen:
-		return true
+		return true, nil
 	default:
-		return false
+		return false, nil
 	}
 }
 
@@ -323,7 +418,16 @@ func (p *parser) primary() (MathNode, error) {
 	switch curr.Type {
 	case Ident:
 		p.advance()
-		if curr.Text.equals(False) { b := BooleanNode(false); return &b, nil } else if curr.Text.equals(True) { b := BooleanNode(true); return &b, nil } else if curr.Text.equals(SmartRune("null")) { n := NullNode{}; return &n, nil }
+		if curr.Text.equals(RuneFalse) {
+			b := BooleanNode(false)
+			return &b, nil
+		} else if curr.Text.equals(RuneTrue) {
+			b := BooleanNode(true)
+			return &b, nil
+		} else if curr.Text.equals(RuneNull) {
+			n := NullNode{}
+			return &n, nil
+		}
 		// check if function call
 		next, ok := p.peek()
 
@@ -341,28 +445,19 @@ func (p *parser) primary() (MathNode, error) {
 				}
 
 				for next, ok = p.peek(); ok; {
-					arg, err := p.expression()
+					arg, err := p.block()
 
 					if err != nil {
 						return nil, err
 					}
 
-					if b, ok := arg.(*BlockNode); ok {
-						// it is a block
-						if len(b.Blocks) != 1 {
-							// TODO
-							return nil, errors.New("todo special block arg case")
-						} else {
-							fb = fb.withArg(b.Blocks[0])
-						}
-					} else {
-						fb = fb.withArg(arg)
-					}
+					fb = fb.withArg(arg)
+					p.skipNewLines()
 
 					next, ok = p.peek() // next iter here because I need value
 
 					if !ok {
-						return nil, ErrTodoUnendedFunction
+						return nil, ErrUnendedFunction
 					}
 
 					// we have either have expressionComma | expressionClose
@@ -374,12 +469,12 @@ func (p *parser) primary() (MathNode, error) {
 						return fb.build(), nil
 					default:
 						// must be comma or close
-						return nil, ErrTodoUnendedFunction
+						return nil, ErrUnendedFunction
 					}
 				}
 
 				// if we get here, then the fn hasn't ended
-				return nil, ErrTodoUnendedFunction
+				return nil, ErrUnendedFunction
 
 			} else {
 				// is this right?
@@ -406,11 +501,12 @@ func (p *parser) primary() (MathNode, error) {
 	case String:
 		p.advance()
 		c := ConstantNode(string(curr.Literal))
+		fmt.Println("creating constant node", string(curr.Literal))
 		return &c, nil
 	case OpenParen:
 		p.advance()
 
-		e, err := p.expression()
+		e, err := p.block()
 
 		if err != nil {
 			return nil, err
@@ -424,13 +520,14 @@ func (p *parser) primary() (MathNode, error) {
 			return nil, errors.New("Expect ')' after expression.")
 		}
 	default:
-		return nil, errors.New("unexpected token: " + string(curr.Text))
+		return nil, newUnexpectedTokenErr((p.tokens[p.current].Text))
 	}
 }
 
 func (p *parser) unary() (MathNode, error) {
 	if next, ok := p.peek(); ok && next.Type == Minus {
 		p.advance()
+		p.skipNewLines()
 
 		content, err := p.unary()
 
@@ -453,103 +550,15 @@ func (p *parser) postfix() (MathNode, error) {
 
 	for next, ok := p.peek(); ok && next.Type == Bang; next, ok = p.peek() {
 		p.advance()
+		// do not skip new lines here
 		e = &OperatorNode{Args: []MathNode{e}, Op: "!", Fn: OperatorFnFactorial}
 	}
 
 	return e, nil
 }
 
-func (p *parser) expression() (MathNode, error) {
-	// expression → NEWLINE* block (NEWLINE+ block)* NEWLINE*
-	next, ok := p.peek()
-
-	if !ok {
-		return nil, ErrEnd
-	}
-
-	isLeading := next.Type == NewLine
-
-	if isLeading {
+func (p *parser) skipNewLines() {
+	for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
 		p.advance()
-
-		for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
-			p.advance()
-		}
-
-		b := &BlockNode{}
-
-		part, err := p.block()
-
-		if err != nil {
-			return nil, err
-		}
-
-		b.Blocks = append(b.Blocks, part)
-
-		// handle (NEWLINE+ block)* NEWLINE*
-		for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
-			p.advance() // consume new line
-
-			for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
-				p.advance()
-			}
-
-			if p.isAtEnd() {
-				return b, nil
-			}
-
-			part, err := p.block()
-
-			if err != nil {
-				return nil, err
-			}
-
-			b.Blocks = append(b.Blocks, part)
-		}
-
-		return b, nil
-
-	} else {
-		part, err := p.block()
-
-		if err != nil {
-			return nil, err
-		}
-
-		b := &BlockNode{Blocks: []MathNode{part}}
-
-		for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
-			p.advance() // consume new line
-
-			for next, ok := p.peek(); ok && next.Type == NewLine; next, ok = p.peek() {
-				p.advance()
-			}
-
-			if p.isAtEnd() {
-				if len(b.Blocks) == 1 {
-					return part, nil
-				} else {
-					return b, nil
-				}
-			}
-
-			part, err := p.block()
-
-			if err != nil {
-				return nil, err
-			}
-
-			b.Blocks = append(b.Blocks, part)
-		}
-
-		if len(b.Blocks) == 1 {
-			return part, nil
-		} else {
-			return b, nil
-		}
 	}
-}
-
-func (p *parser) block() (MathNode, error) {
-	return p.or()
 }

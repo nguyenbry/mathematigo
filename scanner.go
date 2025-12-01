@@ -8,6 +8,30 @@ import (
 var ErrEndStringExpected = errors.New("end of string expected")
 var ErrInvalidSyntax = errors.New("invalid syntax")
 
+type ScanErrType int
+
+const (
+	ScanErrTypeUnexpected = iota
+)
+
+type ScanErr struct {
+	Type     ScanErrType
+	Position int
+	source   []rune
+}
+
+var _ error = (*ScanErr)(nil)
+
+func (se *ScanErr) Error() string {
+	switch se.Type {
+	case ScanErrTypeUnexpected:
+		return fmt.Sprintf("unexpected character: '%c' at position %d", se.source[se.Position-1], se.Position)
+	default:
+		panic("unhandled")
+	}
+
+}
+
 type Scanner struct {
 	source    []rune
 	sourceLen int
@@ -285,7 +309,11 @@ func (s *Scanner) scanToken() error {
 
 			return nil
 		} else {
-			return errors.New("TODO")
+			return &ScanErr{
+				source:   s.source,
+				Type:     ScanErrTypeUnexpected,
+				Position: s.current, // 1-indexed
+			}
 		}
 	}
 }
