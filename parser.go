@@ -501,7 +501,6 @@ func (p *parser) primary() (MathNode, error) {
 	case String:
 		p.advance()
 		c := ConstantNode(string(curr.Literal))
-		fmt.Println("creating constant node", string(curr.Literal))
 		return &c, nil
 	case OpenParen:
 		p.advance()
