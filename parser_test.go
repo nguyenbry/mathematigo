@@ -609,5 +609,59 @@ func TestParse_UnendedAdd(t *testing.T) {
 	require.Equal(t, ParseErrUnexpected, pe.Type)
 	require.Equal(t, []rune("."), pe.chars)
 	require.Zero(t, ex)
+}
 
+func TestParse_NewLinesWithParens(t *testing.T) {
+	same := []string{
+		"(1\n)",
+		"( \n 1 )",
+	}
+
+	for _, x := range same {
+		ex, err := Parse(x)
+		require.NoError(t, err)
+		require.Equal(t, NewParenthesisNode(NewFloatNode(1)), ex)
+	}
+}
+
+func TestParse_NewLineDoesNotResultInImplicitMultiply(t *testing.T) {
+
+	ex, err := Parse("(1) \n (2)")
+
+	require.NoError(t, err)
+
+	require.Equal(t, NewBlockNode(
+		NewParenthesisNode(NewFloatNode(1)),
+		NewParenthesisNode(NewFloatNode(2)),
+	), ex)
+}
+
+func TestParse_SpaceBeforeFactorial(t *testing.T) {
+	ex, err := Parse("1       !")
+	require.NoError(t, err)
+
+	require.Equal(t,
+		NewOperatorNode(
+			"!",
+			OperatorFnFactorial,
+			NewFloatNode(1),
+		),
+		ex,
+	)
+}
+
+func TestParse_FactorialAndBlock(t *testing.T) {
+	ex, err := Parse("1       !   \n ")
+	require.NoError(t, err)
+
+	require.Equal(t,
+		NewBlockNode(
+			NewOperatorNode(
+				"!",
+				OperatorFnFactorial,
+				NewFloatNode(1),
+			),
+		),
+		ex,
+	)
 }

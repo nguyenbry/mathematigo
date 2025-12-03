@@ -504,12 +504,15 @@ func (p *parser) primary() (MathNode, error) {
 		return &c, nil
 	case OpenParen:
 		p.advance()
+		p.skipNewLines()
 
 		e, err := p.block()
 
 		if err != nil {
 			return nil, err
 		}
+
+		p.skipNewLines()
 
 		if next, ok := p.peek(); ok && next.Type == CloseParen {
 			p.advance()
